@@ -1,0 +1,24 @@
+# CLion / JetBrains IDE specific files
+# Contains user-specific settings like window positions, breakpoints, etc.
+.idea/
+
+# CMake generated files
+# This is the default CLion build directory (cmake-build-debug, cmake-build-release, etc.)
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# C/C++ build artifacts
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+
+# Optional: Common OS-generated files
+.DS_Store
+Thumbs.db
