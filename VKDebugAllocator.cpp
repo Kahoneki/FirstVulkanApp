@@ -144,7 +144,12 @@ void VKDebugAllocator::FreeImpl(void* _pMemory)
 	}
 	allocationSizes.erase(it);
 
-	free(_pMemory);
+	#if defined(_WIN32)
+		_aligned_free(_pMemory);
+	#else
+		free(_pMemory);
+	#endif
+	
 }
 
 
