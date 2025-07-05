@@ -560,8 +560,6 @@ void VKApp::Shutdown()
 	}
 	
 	std::cout << "Shutdown complete\n";
-	int x;
-	std::cin >> x;
 }
 
 
