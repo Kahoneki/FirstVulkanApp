@@ -60,6 +60,7 @@ void VKApp::Init(const bool _debug,
 	{
 		if (_debug) { std::cout << " (" << result << ")\n"; }
 		Shutdown();
+		return;
 	}
 	std::vector<VkLayerProperties> instanceLayers;
 	instanceLayers.resize(instanceLayerCount);
@@ -134,6 +135,7 @@ void VKApp::Init(const bool _debug,
 	{
 		if (_debug) { std::cout << " (" << result << ")\n"; }
 		Shutdown();
+		return;
 	}
 	
 	std::vector<VkExtensionProperties> instanceExtensions;
@@ -232,6 +234,7 @@ void VKApp::Init(const bool _debug,
 	{
 		if (_debug) { std::cout << " (" << result << ")\n\n"; }
 		Shutdown();
+		return;
 	}
 	
 	std::vector<VkPhysicalDeviceProperties> physicalDeviceProperties;
@@ -327,7 +330,7 @@ void VKApp::Init(const bool _debug,
 				std::cout << "Queue Family " << j << " (" << queueFamilyProperties[j].queueCount << " queues, ";
 				if (queueFamilyProperties[j].queueFlags == 0) { std::cout << "Base)\n"; continue; }
 				std::string queueFlagsString;
-				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)			{ queueFlagsString += "GRAPHICS | "; graphicsQueueFamilyIndex = j; }
+				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)			{ queueFlagsString += "GRAPHICS | "; }
 				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_COMPUTE_BIT)				{ queueFlagsString += "COMPUTE | "; }
 				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_TRANSFER_BIT)			{ queueFlagsString += "TRANSFER | "; }
 				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)		{ queueFlagsString += "SPARSE_BINDING | "; }
@@ -358,6 +361,7 @@ void VKApp::Init(const bool _debug,
 		{
 			if (_debug) { std::cout << " (" << result << ")\n"; }
 			Shutdown();
+			return;
 		}
 		
 		std::vector<VkLayerProperties> deviceLayers;
@@ -433,6 +437,7 @@ void VKApp::Init(const bool _debug,
 		{
 			if (_debug) { std::cout << " (" << result << ")\n"; }
 			Shutdown();
+			return;
 		}
 		
 		std::vector<VkExtensionProperties> deviceExtensions;
@@ -492,10 +497,34 @@ void VKApp::Init(const bool _debug,
 
 
 	//Create logical device
+
 	if ((bestDevice != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (bestDevice != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) && (bestDevice != VK_PHYSICAL_DEVICE_TYPE_CPU))
 	{
 		std::cerr << "ERR::VKAPPINIT::NO_AVAILABLE_DEVICE_FITTING_TYPE_REQUIREMENTS::AVAILABLE_TYPES=DISCRETE_GPU;INTEGRATED_GPU;CPU::SHUTTING_DOWN" << std::endl;
 		Shutdown();
+		return;
+	}
+
+	//Get graphics queue family index for chosen device
+	std::uint32_t queueFamilyCount{ 0 };
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[physicalDeviceIndex], &queueFamilyCount, nullptr);
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[physicalDeviceIndex], &queueFamilyCount, queueFamilies.data());
+	bool foundGraphicsQueue{ false };
+	for (size_t i = 0; i < queueFamilies.size(); ++i)
+	{
+		if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		{
+			graphicsQueueFamilyIndex = i;
+			foundGraphicsQueue = true;
+			break;
+		}
+	}
+	if (!foundGraphicsQueue)
+	{
+		std::cerr << "ERR::VKAPPINIT::CHOSEN_DEVICE_DOES_NOT_PROVIDE_A_QUEUE_FAMILY_WITH_GRAPHICS_QUEUE_BIT_ENABLED::SHUTTING_DOWN" << std::endl;
+		Shutdown();
+		return;
 	}
 
 	VkPhysicalDeviceFeatures supportedFeatures;
@@ -537,6 +566,7 @@ void VKApp::Init(const bool _debug,
 	{
 		if (_debug) { std::cout << " (" << result << ")\n"; }
 		Shutdown();
+		return;
 	}
 }
 
