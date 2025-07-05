@@ -500,7 +500,7 @@ void VKApp::Init(const bool _debug,
 
 	VkPhysicalDeviceFeatures supportedFeatures;
 	VkPhysicalDeviceFeatures requiredFeatures{};
-	vkGetPhysicalDeviceFeatures(physicalDevices[0], &supportedFeatures);
+	vkGetPhysicalDeviceFeatures(physicalDevices[physicalDeviceIndex], &supportedFeatures);
 	requiredFeatures.multiDrawIndirect = supportedFeatures.multiDrawIndirect;
 	requiredFeatures.tessellationShader = VK_TRUE;
 	requiredFeatures.geometryShader = VK_TRUE;
@@ -531,7 +531,7 @@ void VKApp::Init(const bool _debug,
 		std::string deviceTypeName{ bestDevice == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "DISCRETE_GPU" : (bestDevice == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "INTEGRATED_GPU" : "CPU") };
 		std::cout << std::left << std::setw(debugW) << "\n\n\nCreating vulkan logical device for device " + std::to_string(physicalDeviceIndex) + " (" + deviceTypeName + ")";
 	}
-	result = vkCreateDevice(physicalDevices[0], &deviceCreateInfo, nullptr, &device);
+	result = vkCreateDevice(physicalDevices[physicalDeviceIndex], &deviceCreateInfo, nullptr, &device);
 	if (_debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
 	if (result != VK_SUCCESS)
 	{
