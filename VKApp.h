@@ -48,6 +48,9 @@ private:
 
 	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
 	std::size_t physicalDeviceIndex;
+
+	//Queue family index that has graphics support
+	std::size_t graphicsQueueFamilyIndex;
 };
 
 }

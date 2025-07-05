@@ -327,7 +327,7 @@ void VKApp::Init(const bool _debug,
 				std::cout << "Queue Family " << j << " (" << queueFamilyProperties[j].queueCount << " queues, ";
 				if (queueFamilyProperties[j].queueFlags == 0) { std::cout << "Base)\n"; continue; }
 				std::string queueFlagsString;
-				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)			{ queueFlagsString += "GRAPHICS | "; }
+				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)			{ queueFlagsString += "GRAPHICS | "; graphicsQueueFamilyIndex = j; }
 				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_COMPUTE_BIT)				{ queueFlagsString += "COMPUTE | "; }
 				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_TRANSFER_BIT)			{ queueFlagsString += "TRANSFER | "; }
 				if (queueFamilyProperties[j].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)		{ queueFlagsString += "SPARSE_BINDING | "; }
@@ -509,7 +509,7 @@ void VKApp::Init(const bool _debug,
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queueCreateInfo.pNext = nullptr;
 	queueCreateInfo.flags = 0;
-	queueCreateInfo.queueFamilyIndex = 0;
+	queueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
 	queueCreateInfo.queueCount = 1;
 	constexpr float queuePriority{ 1.0f };
 	queueCreateInfo.pQueuePriorities = &queuePriority;
