@@ -93,6 +93,7 @@ void VKApp::Init(const bool _debug,
 		}
 
 		//Check if current layer is in list of desired layers
+		if (_desiredInstanceLayers == nullptr) { continue; }
 		std::vector<const char*>::const_iterator it{ std::find_if(_desiredInstanceLayers->begin(), _desiredInstanceLayers->end(), [&](const char* l)
 		{
 			return std::strcmp(l, instanceLayers[i].layerName) == 0;
@@ -110,10 +111,13 @@ void VKApp::Init(const bool _debug,
 		{
 			std::cout << "Added " << layerName << " to instance creation\n";
 		}
-		for (const std::string& layerName : *_desiredInstanceLayers)
+		if (_desiredInstanceLayers != nullptr)
 		{
-			std::cout << "Failed to add " << layerName << " to instance creation - layer does not exist or is unavailable\n";
-		}	
+			for (const std::string& layerName : *_desiredInstanceLayers)
+			{
+				std::cout << "Failed to add " << layerName << " to instance creation - layer does not exist or is unavailable\n";
+			}	
+		}
 	}
 
 
@@ -159,6 +163,7 @@ void VKApp::Init(const bool _debug,
 		}
 
 		//Check if current extension is in list of desired extensions
+		if (_desiredInstanceExtensions == nullptr) { continue; }
 		std::vector<const char*>::const_iterator it{ std::find_if(_desiredInstanceExtensions->begin(), _desiredInstanceExtensions->end(), [&](const char* e)
 		{
 			return std::strcmp(e, instanceExtensions[i].extensionName) == 0;
@@ -176,9 +181,12 @@ void VKApp::Init(const bool _debug,
 		{
 			std::cout << "Added " << extensionName << " to instance creation\n";
 		}
-		for (const std::string& extensionName : *_desiredInstanceExtensions)
+		if (_desiredInstanceExtensions != nullptr)
 		{
-			std::cout << "Failed to add " << extensionName << " to instance creation - extension does not exist or is unavailable\n";
+			for (const std::string& extensionName : *_desiredInstanceExtensions)
+			{
+				std::cout << "Failed to add " << extensionName << " to instance creation - extension does not exist or is unavailable\n";
+			}
 		}
 	}
 
@@ -383,6 +391,7 @@ void VKApp::Init(const bool _debug,
 			}
 
 			//Check if current layer is in list of desired layers
+			if (_desiredDeviceLayers == nullptr) { continue; }
 			std::vector<const char*>::const_iterator it{ std::find_if(_desiredDeviceLayers->begin(), _desiredDeviceLayers->end(), [&](const char* l)
 			{
 				return std::strcmp(l, deviceLayers[j].layerName) == 0;
@@ -401,9 +410,12 @@ void VKApp::Init(const bool _debug,
 			{
 				std::cout << "Added " << layerName << " to device creation\n";
 			}
-			for (const std::string& layerName : *_desiredDeviceLayers)
+			if (_desiredDeviceLayers != nullptr)
 			{
-				std::cout << "Failed to add " << layerName << " to device creation - layer does not exist or is unavailable\n";
+				for (const std::string& layerName : *_desiredDeviceLayers)
+				{
+					std::cout << "Failed to add " << layerName << " to device creation - layer does not exist or is unavailable\n";
+				}
 			}
 		}
 
@@ -450,6 +462,7 @@ void VKApp::Init(const bool _debug,
 			}
 
 			//Check if current extension is in list of desired extensions
+			if (_desiredDeviceExtensions == nullptr) { continue; }
 			std::vector<const char*>::const_iterator it{ std::find_if(_desiredDeviceExtensions->begin(), _desiredDeviceExtensions->end(), [&](const char* e)
 			{
 				return std::strcmp(e, deviceExtensions[j].extensionName) == 0;
@@ -467,9 +480,12 @@ void VKApp::Init(const bool _debug,
 			{
 				std::cout << "Added " << extensionName << " to device creation\n";
 			}
-			for (const std::string& extensionName : *_desiredDeviceExtensions)
+			if (_desiredDeviceExtensions != nullptr)
 			{
-				std::cout << "Failed to add " << extensionName << " to device creation - extension does not exist or is unavailable\n";
+				for (const std::string& extensionName : *_desiredDeviceExtensions)
+				{
+					std::cout << "Failed to add " << extensionName << " to device creation - extension does not exist or is unavailable\n";
+				}
 			}
 		}
 	}
@@ -544,6 +560,8 @@ void VKApp::Shutdown()
 	}
 	
 	std::cout << "Shutdown complete\n";
+	int x;
+	std::cin >> x;
 }
 
 
