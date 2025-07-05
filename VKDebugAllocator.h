@@ -29,9 +29,9 @@ private:
 	static void VKAPI_CALL Free(void* _pUserData, void* _pMemory);
 	//todo: maybe add internal allocation notification callbacks ?
 
-	void* Allocation(std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope);
-	void* Reallocation(void* _pOriginal, std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope);
-	void Free(void* _pMemory);
+	void* AllocationImpl(std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope);
+	void* ReallocationImpl(void* _pOriginal, std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope);
+	void FreeImpl(void* _pMemory);
 
 	//Stores the sizes of all allocations (required for reallocation)
 	std::unordered_map<void*, std::size_t> allocationSizes;

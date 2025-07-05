@@ -2,6 +2,9 @@
 #include <cstdlib>
 #include <iostream>
 #include <cstring>
+#if defined(_WIN32)
+	#include <malloc.h>
+#endif
 
 namespace Neki
 {
@@ -36,28 +39,34 @@ VKDebugAllocator::~VKDebugAllocator()
 
 void* VKAPI_CALL VKDebugAllocator::Allocation(void* _pUserData, std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope)
 {
-	return static_cast<VKDebugAllocator*>(_pUserData)->Allocation(_size, _alignment, _allocationScope);
+	return static_cast<VKDebugAllocator*>(_pUserData)->AllocationImpl(_size, _alignment, _allocationScope);
 }
 
 void* VKAPI_CALL VKDebugAllocator::Reallocation(void* _pUserData, void* _pOriginal, std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope)
 {
-	return static_cast<VKDebugAllocator*>(_pUserData)->Reallocation(_pOriginal, _size, _alignment, _allocationScope);
+	return static_cast<VKDebugAllocator*>(_pUserData)->ReallocationImpl(_pOriginal, _size, _alignment, _allocationScope);
 }
 
 void VKAPI_CALL VKDebugAllocator::Free(void* _pUserData, void* _pMemory)
 {
-	return static_cast<VKDebugAllocator*>(_pUserData)->Free(_pMemory);
+	return static_cast<VKDebugAllocator*>(_pUserData)->FreeImpl(_pMemory);
 }
 
 
 
-void* VKDebugAllocator::Allocation(std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope)
+void* VKDebugAllocator::AllocationImpl(std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope)
 {
-	if (verbose) { std::cout << "VKDebugAllocator - Allocation called for " << _size << " bytes aligned to " << _alignment << " bytes with " << _allocationScope << " allocation scope.\n"; }
-	void* ptr{ nullptr };
-	if (posix_memalign(&ptr, _alignment, _size) != 0)
+	if (verbose) { std::cout << "VKDebugAllocator - AllocationImpl called for " << _size << " bytes aligned to " << _alignment << " bytes with " << _allocationScope << " allocation scope.\n"; }
+	
+	#if defined(_WIN32)
+		void* ptr{ _aligned_malloc(_size, _alignment) };
+		if (ptr == nullptr)
+	#else
+		void* ptr{ nullptr };
+		if (posix_memalign(&ptr, _alignment, _size) != 0)
+	#endif
 	{
-		std::cerr << "ERR::VKDEBUGALLOCATOR::ALLOCATION::ALLOCATION_FAILED::RETURNING_NULLPTR" << std::endl;
+		std::cerr << "ERR::VKDEBUGALLOCATOR::ALLOCATIONIMPL::ALLOCATION_FAILED::RETURNING_NULLPTR" << std::endl;
 		return nullptr;
 	}
 
@@ -69,20 +78,20 @@ void* VKDebugAllocator::Allocation(std::size_t _size, std::size_t _alignment, Vk
 
 
 
-void* VKDebugAllocator::Reallocation(void* _pOriginal, std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope)
+void* VKDebugAllocator::ReallocationImpl(void* _pOriginal, std::size_t _size, std::size_t _alignment, VkSystemAllocationScope _allocationScope)
 {
-	if (verbose) { std::cout << "VKDebugAllocator - Reallocation called for address " << _pOriginal << " to the new pool of " << _size << " bytes aligned to " << _alignment << " bytes with " << _allocationScope << " allocation scope.\n"; }
+	if (verbose) { std::cout << "VKDebugAllocator - ReallocationImpl called for address " << _pOriginal << " to the new pool of " << _size << " bytes aligned to " << _alignment << " bytes with " << _allocationScope << " allocation scope.\n"; }
 
 	if (_pOriginal == nullptr)
 	{
-		if (verbose) { std::cout << "VKDebugAllocator - Reallocation - _pOriginal == nullptr, falling back to VKDebugAllocator::Allocation\n"; }
-		return Allocation(_size, _alignment, _allocationScope);
+		if (verbose) { std::cout << "VKDebugAllocator - ReallocationImpl - _pOriginal == nullptr, falling back to VKDebugAllocator::Allocation\n"; }
+		return AllocationImpl(_size, _alignment, _allocationScope);
 	}
 
 	if (_size == 0)
 	{
-		if (verbose) { std::cout << "VKDebugAllocator - Reallocation - _size == 0, falling back to VKDebugAllocator::Free and returning nullptr\n"; }
-		Free(_pOriginal);
+		if (verbose) { std::cout << "VKDebugAllocator - ReallocationImpl - _size == 0, falling back to VKDebugAllocator::Free and returning nullptr\n"; }
+		FreeImpl(_pOriginal);
 		return nullptr;
 	}
 	
@@ -93,35 +102,35 @@ void* VKDebugAllocator::Reallocation(void* _pOriginal, std::size_t _size, std::s
 		std::unordered_map<void*, std::size_t>::iterator it{ allocationSizes.find(_pOriginal) };
 		if (it == allocationSizes.end())
 		{
-			std::cerr << "ERR::VKDEBUGALLOCATOR::REALLOCATION::PROVIDED_DATA_NOT_ORIGINALLY_ALLOCATED_BY_VKDEBUGALLOCATOR::RETURNING_NULLPTR" << std::endl;
+			std::cerr << "ERR::VKDEBUGALLOCATOR::REALLOCATIONIMPL::PROVIDED_DATA_NOT_ORIGINALLY_ALLOCATED_BY_VKDEBUGALLOCATOR::RETURNING_NULLPTR" << std::endl;
 			return nullptr;
 		}
 		oldSize = it->second;
 	}
 
 	//Allocate a new block
-	void* newPtr{ Allocation(_size, _alignment, _allocationScope) };
+	void* newPtr{ AllocationImpl(_size, _alignment, _allocationScope) };
 	if (newPtr == nullptr)
 	{
-		std::cerr << "ERR::VKDEBUGALLOCATOR::REALLOCATION::ALLOCATION_RETURNED_NULLPTR" << std::endl;
+		std::cerr << "ERR::VKDEBUGALLOCATOR::REALLOCATIONIMPL::ALLOCATION_RETURNED_NULLPTR" << std::endl;
 	}
 
 	//Copy data and free old block
 	std::size_t bytesToCopy{ (oldSize < _size) ? oldSize : _size };
 	memcpy(newPtr, _pOriginal, bytesToCopy);
-	Free(_pOriginal);
+	FreeImpl(_pOriginal);
 
 	return newPtr;
 }
 
 
-void VKDebugAllocator::Free(void* _pMemory)
+void VKDebugAllocator::FreeImpl(void* _pMemory)
 {
-	if (verbose) { std::cout << "VKDebugAllocator - Free called for address " << _pMemory << "\n"; }
+	if (verbose) { std::cout << "VKDebugAllocator - FreeImpl called for address " << _pMemory << "\n"; }
 
 	if (_pMemory == nullptr)
 	{
-		if (verbose) { std::cout << "VKDebugAllocator - Free - _pMemory == nullptr, returning.\n"; }
+		if (verbose) { std::cout << "VKDebugAllocator - FreeImpl - _pMemory == nullptr, returning.\n"; }
 		return;
 	}
 	
@@ -130,7 +139,7 @@ void VKDebugAllocator::Free(void* _pMemory)
 	std::unordered_map<void*, std::size_t>::iterator it{ allocationSizes.find(_pMemory) };
 	if (it == allocationSizes.end())
 	{
-		std::cerr << "ERR::VKDEBUGALLOCATOR::FREE::PROVIDED_DATA_NOT_ORIGINALLY_ALLOCATED_BY_VKDEBUGALLOCATOR::RETURNING" << std::endl;
+		std::cerr << "ERR::VKDEBUGALLOCATOR::FREEIMPL::PROVIDED_DATA_NOT_ORIGINALLY_ALLOCATED_BY_VKDEBUGALLOCATOR::RETURNING" << std::endl;
 		return;
 	}
 	allocationSizes.erase(it);
