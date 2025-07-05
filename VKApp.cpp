@@ -5,6 +5,7 @@
 #include <cstring>
 #include <vulkan/vulkan.h>
 #include "VKApp.h"
+#include <string>
 
 namespace Neki
 {
@@ -229,6 +230,7 @@ void VKApp::Init(const bool _debug,
 	physicalDevices.resize(physicalDeviceCount);
 	physicalDeviceProperties.resize(physicalDeviceCount);
 	vkEnumeratePhysicalDevices(inst, &physicalDeviceCount, physicalDevices.data());
+	VkPhysicalDeviceType bestDevice{ VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM }; //Stores the best device type that has currently been found
 	for (std::size_t i{ 0 }; i < physicalDeviceCount; ++i)
 	{
 		vkGetPhysicalDeviceProperties(physicalDevices[i], &physicalDeviceProperties[i]);
@@ -242,9 +244,30 @@ void VKApp::Init(const bool _debug,
 			std::cout << "Device ID: " << physicalDeviceProperties[i].deviceID << "\n";
 			std::cout << "Device Type: " << physicalDeviceProperties[i].deviceType << "\n";
 		}
+		if (physicalDeviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+		{
+			bestDevice = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+			physicalDeviceIndex = i;
+		}
+		else if (physicalDeviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+		{
+			if (bestDevice != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			{
+				bestDevice = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+				physicalDeviceIndex = i;
+			}
+		}
+		else if (physicalDeviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
+		{
+			if ((bestDevice != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (bestDevice != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU))
+			{
+				bestDevice = VK_PHYSICAL_DEVICE_TYPE_CPU;
+				physicalDeviceIndex = i;
+			}
+		}
+
 		VkPhysicalDeviceMemoryProperties memProps;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevices[i], &memProps);
-
 		if (_debug)
 		{
 			std::cout << "\nMemory Information:\n";
@@ -287,7 +310,6 @@ void VKApp::Init(const bool _debug,
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[i], &queueFamilyCount, nullptr);
 		queueFamilyProperties.resize(queueFamilyCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[i], &queueFamilyCount, queueFamilyProperties.data());
-
 		if (_debug)
 		{
 			std::cout << "\nQueue Information:\n";
@@ -453,7 +475,13 @@ void VKApp::Init(const bool _debug,
 	}
 
 
-	//Create logical device (just based on physical device 0 for now - todo: change this)
+	//Create logical device
+	if ((bestDevice != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (bestDevice != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) && (bestDevice != VK_PHYSICAL_DEVICE_TYPE_CPU))
+	{
+		std::cerr << "ERR::VKAPPINIT::NO_AVAILABLE_DEVICE_FITTING_TYPE_REQUIREMENTS::AVAILABLE_TYPES=DISCRETE_GPU;INTEGRATED_GPU;CPU::SHUTTING_DOWN" << std::endl;
+		Shutdown();
+	}
+
 	VkPhysicalDeviceFeatures supportedFeatures;
 	VkPhysicalDeviceFeatures requiredFeatures{};
 	vkGetPhysicalDeviceFeatures(physicalDevices[0], &supportedFeatures);
@@ -482,7 +510,11 @@ void VKApp::Init(const bool _debug,
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensionNamesToBeAdded.data();
 	deviceCreateInfo.pEnabledFeatures = &requiredFeatures;
 
-	if (_debug) { std::cout << std::left << std::setw(debugW) << "\n\n\nCreating vulkan logical device"; }
+	if (_debug)
+	{
+		std::string deviceTypeName{ bestDevice == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "DISCRETE_GPU" : (bestDevice == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "INTEGRATED_GPU" : "CPU") };
+		std::cout << std::left << std::setw(debugW) << "\n\n\nCreating vulkan logical device for device " + std::to_string(physicalDeviceIndex) + " (" + deviceTypeName + ")";
+	}
 	result = vkCreateDevice(physicalDevices[0], &deviceCreateInfo, nullptr, &device);
 	if (_debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
 	if (result != VK_SUCCESS)

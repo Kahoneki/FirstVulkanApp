@@ -45,6 +45,9 @@ private:
 	VkInstance inst;
 	std::vector<VkPhysicalDevice> physicalDevices;
 	VkDevice device;
+
+	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
+	std::size_t physicalDeviceIndex;
 };
 
 }
