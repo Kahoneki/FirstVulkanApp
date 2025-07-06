@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 #include <cstdint>
 #include <vector>
+#include "VKDebugAllocator.h"
 
 namespace Neki
 {
@@ -22,15 +23,25 @@ public:
 	~VKApp();
 	
 private:
-	void Init(const bool _debug,
-			  const std::uint32_t _apiVer,
+	void Init(const std::uint32_t _apiVer,
 			  const char* _appName,
 			  std::vector<const char*>* _desiredInstanceLayers,
 			  std::vector<const char*>* _desiredInstanceExtensions,
 			  std::vector<const char*>* _desiredDeviceLayers,
 			  std::vector<const char*>* _desiredDeviceExtensions);
 
-	void Shutdown();
+	//Init subfunctions
+	void CreateInstance(const std::uint32_t _apiVer,
+						const char* _appName,
+						std::vector<const char*>* _desiredInstanceLayers,
+						std::vector<const char*>* _desiredInstanceExtensions);
+
+	void SelectPhysicalDevice();
+
+	void CreateLogicalDevice(std::vector<const char*>* _desiredDeviceLayers,
+							 std::vector<const char*>* _desiredDeviceExtensions);
+
+	void Shutdown(bool _throwError=false);
 
 	//For debug print formatting
 	constexpr static std::int32_t debugW{ 65 };
@@ -40,6 +51,7 @@ private:
 	constexpr static std::int32_t implW{ 15 };
 	constexpr static std::int32_t descW{ 40 };
 
+	bool debug;
 
 	//Vulkan resources
 	VkInstance inst;
@@ -48,9 +60,15 @@ private:
 
 	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
 	std::size_t physicalDeviceIndex;
+	//The type of the selected physical device
+	VkPhysicalDeviceType physicalDeviceType;
 
 	//Queue family index that has graphics support
 	std::size_t graphicsQueueFamilyIndex;
+
+	//Debug allocators (used if debug=true)
+	VKDebugAllocator instDebugAllocator;
+	VKDebugAllocator deviceDebugAllocator;
 };
 
 }

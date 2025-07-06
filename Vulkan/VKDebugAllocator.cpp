@@ -112,7 +112,8 @@ void* VKDebugAllocator::ReallocationImpl(void* _pOriginal, std::size_t _size, st
 	void* newPtr{ AllocationImpl(_size, _alignment, _allocationScope) };
 	if (newPtr == nullptr)
 	{
-		std::cerr << "ERR::VKDEBUGALLOCATOR::REALLOCATIONIMPL::ALLOCATION_RETURNED_NULLPTR" << std::endl;
+		std::cerr << "ERR::VKDEBUGALLOCATOR::REALLOCATIONIMPL::ALLOCATION_RETURNED_NULLPTR::RETURNING_NULLPTR" << std::endl;
+		return nullptr;
 	}
 
 	//Copy data and free old block
