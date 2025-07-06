@@ -22,6 +22,8 @@ VKApp::VKApp(const bool _debug,
 	debug = _debug;
 	inst = VK_NULL_HANDLE;
 	device = VK_NULL_HANDLE;
+	graphicsQueue = VK_NULL_HANDLE;
+	commandPool = VK_NULL_HANDLE;
 	Init(_apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions);
 }
 
@@ -45,6 +47,8 @@ void VKApp::Init(const std::uint32_t _apiVer,
 	CreateInstance(_apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions);
 	SelectPhysicalDevice();
 	CreateLogicalDevice(_desiredDeviceLayers, _desiredDeviceExtensions);
+	CreateCommandPool();
+	AllocateCommandBuffers();
 }
 
 
@@ -610,10 +614,68 @@ void VKApp::CreateLogicalDevice(std::vector<const char*>* _desiredDeviceLayers,
 
 
 
+void VKApp::CreateCommandPool()
+{
+	if (debug) { std::cout << "\n\n\nCreating Command Pool\n"; }
+
+	//Get the queue handle
+	if (debug) { std::cout << "Getting queue handle\n"; }
+	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
+
+	//Crete the pool
+	VkCommandPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.pNext = nullptr;
+	poolInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
+	poolInfo.flags = VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating command pool for family " + std::to_string(graphicsQueueFamilyIndex) + " (queue index " + std::to_string(0) + ")"; }
+	VkResult result{ vkCreateCommandPool(device, &poolInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &commandPool) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+}
+
+
+
+void VKApp::AllocateCommandBuffers()
+{
+	if (debug) { std::cout << "\n\n\Allocating Command Buffers\n"; }
+
+	//Allocate the command buffer
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.pNext = nullptr;
+	allocInfo.commandPool = commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = 1;
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Allocating " + std::to_string(allocInfo.commandBufferCount) + " command buffer" + (allocInfo.commandBufferCount != 1 ? "s" : "") + " of level " + (allocInfo.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY ? "PRIMARY" : "SECONDARY"); }
+	VkResult result{ vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+}
+
+
+
 void VKApp::Shutdown(bool _throwError)
 {
-	std::cout << "Shutting down\n";
-	
+	std::cout << "\n\n\nShutting down\n";
+
+	if (commandPool != VK_NULL_HANDLE)
+	{
+		vkDestroyCommandPool(device, commandPool, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		commandPool = VK_NULL_HANDLE;
+		std::cout << "Command Pool (and all contained command buffers) Destroyed\n";
+	}
+
 	if (device != VK_NULL_HANDLE)
 	{
 		vkDeviceWaitIdle(device);

@@ -41,6 +41,9 @@ private:
 	void CreateLogicalDevice(std::vector<const char*>* _desiredDeviceLayers,
 							 std::vector<const char*>* _desiredDeviceExtensions);
 
+	void CreateCommandPool();
+	void AllocateCommandBuffers();
+
 	void Shutdown(bool _throwError=false);
 
 	//For debug print formatting
@@ -57,6 +60,9 @@ private:
 	VkInstance inst;
 	std::vector<VkPhysicalDevice> physicalDevices;
 	VkDevice device;
+	VkQueue graphicsQueue;
+	VkCommandPool commandPool;
+	VkCommandBuffer commandBuffer;
 
 	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
 	std::size_t physicalDeviceIndex;
