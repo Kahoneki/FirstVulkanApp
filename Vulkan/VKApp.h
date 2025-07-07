@@ -47,6 +47,8 @@ private:
 	void CreateBuffer();
 	void PopulateBuffer();
 
+	void CreateDescriptorSetLayout();
+
 	void Shutdown(bool _throwError=false);
 
 	//For debug print formatting
@@ -68,6 +70,7 @@ private:
 	VkCommandBuffer commandBuffer;
 	VkBuffer buffer;
 	VkDeviceMemory bufferMemory;
+	VkDescriptorSetLayout descSetLayout;
 
 	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
 	std::size_t physicalDeviceIndex;

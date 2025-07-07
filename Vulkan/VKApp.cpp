@@ -29,6 +29,7 @@ VKApp::VKApp(const bool _debug,
 	commandPool = VK_NULL_HANDLE;
 	buffer = VK_NULL_HANDLE;
 	bufferMemory = VK_NULL_HANDLE;
+	descSetLayout = VK_NULL_HANDLE;
 	Init(_apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions);
 }
 
@@ -56,6 +57,7 @@ void VKApp::Init(const std::uint32_t _apiVer,
 	AllocateCommandBuffers();
 	CreateBuffer();
 	PopulateBuffer();
+	CreateDescriptorSetLayout();
 }
 
 
@@ -797,9 +799,51 @@ void VKApp::PopulateBuffer()
 
 
 
+void VKApp::CreateDescriptorSetLayout()
+{
+	if (debug) { std::cout << "\n\n\nCreating Descriptor Set Layout\n"; }
+
+	if (debug) { std::cout << "Defining UBO binding at binding point 0 accessible to the vertex stage\n"; }
+	
+	//Define descriptor binding 0 as a uniform buffer accessible from the vertex shader
+	VkDescriptorSetLayoutBinding uboLayoutBinding{};
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.pImmutableSamplers = nullptr;
+	
+	//Create the descriptor set layout
+	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.pNext = nullptr;
+	layoutInfo.flags = 0;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &uboLayoutBinding;
+
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating descriptor set layout"; }
+	VkResult result{ vkCreateDescriptorSetLayout(device, &layoutInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &descSetLayout ) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+}
+
+
+
 void VKApp::Shutdown(bool _throwError)
 {
 	std::cout << "\n\n\nShutting down\n";
+
+	if (descSetLayout != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorSetLayout(device, descSetLayout, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		descSetLayout = VK_NULL_HANDLE;
+		std::cout << "Descriptor Set Layout Destroyed\n";
+	}
 
 	if (bufferMemory != VK_NULL_HANDLE)
 	{
