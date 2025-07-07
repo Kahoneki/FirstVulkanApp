@@ -51,6 +51,7 @@ private:
 	void CreatePipelineLayout();
 	void CreateDescriptorPool();
 	void AllocateDescriptorSets();
+	void UpdateDescriptorSets();
 
 	void Shutdown(bool _throwError=false);
 

@@ -64,6 +64,7 @@ void VKApp::Init(const std::uint32_t _apiVer,
 	CreatePipelineLayout();
 	CreateDescriptorPool();
 	AllocateDescriptorSets();
+	UpdateDescriptorSets();
 }
 
 
@@ -655,7 +656,7 @@ void VKApp::CreateCommandPool()
 
 void VKApp::AllocateCommandBuffers()
 {
-	if (debug) { std::cout << "\n\n\Allocating Command Buffers\n"; }
+	if (debug) { std::cout << "\n\n\nAllocating Command Buffers\n"; }
 
 	//Allocate the command buffer
 	VkCommandBufferAllocateInfo allocInfo{};
@@ -686,7 +687,7 @@ void VKApp::CreateBuffer()
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.pNext = nullptr;
 	bufferInfo.size = 1024 * 1024; //1 MiB
-	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	if (debug)
 	{
@@ -814,7 +815,7 @@ void VKApp::CreateDescriptorSetLayout()
 	//Define descriptor binding 0 as a uniform buffer accessible from the vertex shader
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
 	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
 	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	uboLayoutBinding.pImmutableSamplers = nullptr;
@@ -873,7 +874,7 @@ void VKApp::CreateDescriptorPool()
 	//Define the pool sizes
 	VkDescriptorPoolSize poolSize;
 	poolSize.descriptorCount = 1;
-	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
 	//Crete the pool
 	VkDescriptorPoolCreateInfo poolInfo{};
@@ -898,7 +899,7 @@ void VKApp::CreateDescriptorPool()
 
 void VKApp::AllocateDescriptorSets()
 {
-	if (debug) { std::cout << "\n\n\Allocating Descriptor Sets\n"; }
+	if (debug) { std::cout << "\n\n\nAllocating Descriptor Sets\n"; }
 
 	//Allocate the descriptor set
 	VkDescriptorSetAllocateInfo allocInfo{};
@@ -916,6 +917,35 @@ void VKApp::AllocateDescriptorSets()
 		Shutdown(true);
 		return;
 	}
+}
+
+
+
+void VKApp::UpdateDescriptorSets()
+{
+	if (debug) { std::cout << "\n\n\nUpdating Descriptor Sets\n"; }
+
+	//Update descriptor set to make descriptor at binding 0 point to VKApp::buffer
+	VkDescriptorBufferInfo bufferInfo{};
+	bufferInfo.buffer = buffer;
+	bufferInfo.offset = 0;
+	bufferInfo.range = VK_WHOLE_SIZE;
+
+	VkWriteDescriptorSet descriptorWrite;
+	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite.pNext = nullptr;
+	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstBinding = 0;
+	descriptorWrite.dstArrayElement = 0;
+	descriptorWrite.descriptorCount = 1;
+	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	descriptorWrite.pBufferInfo = &bufferInfo;
+	descriptorWrite.pTexelBufferView = nullptr;
+	descriptorWrite.pImageInfo = nullptr;
+
+	vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+
+	if (debug) { std::cout << "Descriptor set binding 0 updated to point to buffer\n"; }
 }
 
 
