@@ -9,6 +9,9 @@
 
 namespace Neki
 {
+	//Forward declarations
+	std::string GetFormattedSizeString(std::size_t numBytes);
+
 
 VKApp::VKApp(const bool _debug,
 			 const std::uint32_t _apiVer,
@@ -24,6 +27,8 @@ VKApp::VKApp(const bool _debug,
 	device = VK_NULL_HANDLE;
 	graphicsQueue = VK_NULL_HANDLE;
 	commandPool = VK_NULL_HANDLE;
+	buffer = VK_NULL_HANDLE;
+	bufferMemory = VK_NULL_HANDLE;
 	Init(_apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions);
 }
 
@@ -49,6 +54,8 @@ void VKApp::Init(const std::uint32_t _apiVer,
 	CreateLogicalDevice(_desiredDeviceLayers, _desiredDeviceExtensions);
 	CreateCommandPool();
 	AllocateCommandBuffers();
+	CreateBuffer();
+	PopulateBuffer();
 }
 
 
@@ -311,10 +318,7 @@ void VKApp::SelectPhysicalDevice()
 			for (std::size_t j{ 0 }; j < memProps.memoryHeapCount; ++j)
 			{
 				std::cout << "Heap " << j << " (" << ((memProps.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? "VRAM" : "RAM") << ", ";
-				if (memProps.memoryHeaps[j].size / (1024 * 1024 * 1024) != 0) { std::cout << memProps.memoryHeaps[j].size / (1024 * 1024 * 1024) << "GiB)\n"; }
-				else if (memProps.memoryHeaps[j].size / (1024 * 1024) != 0) { std::cout << memProps.memoryHeaps[j].size / (1024 * 1024) << "MiB)\n"; }
-				else if (memProps.memoryHeaps[j].size / 1024 != 0) { std::cout << memProps.memoryHeaps[j].size / 1024 << "KiB)\n"; }
-				else { std::cout << memProps.memoryHeaps[j].size << "B)\n"; }
+				std::cout << GetFormattedSizeString(memProps.memoryHeaps[j].size) << "\n";
 			}
 			for (std::size_t j{ 0 }; j < memProps.memoryTypeCount; ++j)
 			{
@@ -470,7 +474,7 @@ void VKApp::CreateLogicalDevice(std::vector<const char*>* _desiredDeviceLayers,
 
 	if ((physicalDeviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (physicalDeviceType != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) && (physicalDeviceType != VK_PHYSICAL_DEVICE_TYPE_CPU))
 	{
-		std::cerr << "ERR::VKAPPINIT::NO_AVAILABLE_DEVICE_FITTING_TYPE_REQUIREMENTS::AVAILABLE_TYPES=DISCRETE_GPU;INTEGRATED_GPU;CPU::SHUTTING_DOWN" << std::endl;
+		std::cerr << "ERR::VKAPP::CREATE_LOGICAL_DEVICE::NO_AVAILABLE_DEVICE_FITTING_TYPE_REQUIREMENTS::AVAILABLE_TYPES=DISCRETE_GPU;INTEGRATED_GPU;CPU::SHUTTING_DOWN" << std::endl;
 		Shutdown(true);
 		return;
 	}
@@ -492,7 +496,7 @@ void VKApp::CreateLogicalDevice(std::vector<const char*>* _desiredDeviceLayers,
 	}
 	if (!foundGraphicsQueue)
 	{
-		std::cerr << "ERR::VKAPPINIT::CHOSEN_DEVICE_DOES_NOT_PROVIDE_A_QUEUE_FAMILY_WITH_GRAPHICS_QUEUE_BIT_ENABLED::SHUTTING_DOWN" << std::endl;
+		std::cerr << "ERR::VKAPP::CREATE_LOGICAL_DEVICE::CHOSEN_DEVICE_DOES_NOT_PROVIDE_A_QUEUE_FAMILY_WITH_GRAPHICS_QUEUE_BIT_ENABLED::SHUTTING_DOWN" << std::endl;
 		Shutdown(true);
 		return;
 	}
@@ -610,6 +614,10 @@ void VKApp::CreateLogicalDevice(std::vector<const char*>* _desiredDeviceLayers,
 		Shutdown(true);
 		return;
 	}
+
+	//Get the queue handle
+	if (debug) { std::cout << "Getting queue handle\n"; }
+	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
 }
 
 
@@ -618,17 +626,13 @@ void VKApp::CreateCommandPool()
 {
 	if (debug) { std::cout << "\n\n\nCreating Command Pool\n"; }
 
-	//Get the queue handle
-	if (debug) { std::cout << "Getting queue handle\n"; }
-	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
-
 	//Crete the pool
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.pNext = nullptr;
 	poolInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
 	poolInfo.flags = VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating command pool for family " + std::to_string(graphicsQueueFamilyIndex) + " (queue index " + std::to_string(0) + ")"; }
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating command pool for queue family " + std::to_string(graphicsQueueFamilyIndex) + " (queue index " + std::to_string(0) + ")"; }
 	VkResult result{ vkCreateCommandPool(device, &poolInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &commandPool) };
 	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
 	if (result != VK_SUCCESS)
@@ -665,9 +669,151 @@ void VKApp::AllocateCommandBuffers()
 
 
 
+void VKApp::CreateBuffer()
+{
+	if (debug) { std::cout << "\n\n\nCreating Buffer\n"; }
+
+	//Create buffer
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.pNext = nullptr;
+	bufferInfo.size = 1024 * 1024; //1 MiB
+	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	if (debug)
+	{
+		std::cout << std::left << std::setw(debugW) << "Creating buffer (size: " + GetFormattedSizeString(bufferInfo.size) + ")";
+	}
+	VkResult result{ vkCreateBuffer(device, &bufferInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &buffer) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+
+	//Check memory requirements of buffer
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+	if (debug)
+	{
+		std::cout << "Buffer memory requirements:\n";
+		std::cout << "- " << GetFormattedSizeString(memRequirements.size) << " bytes minimum allocation size\n";
+		std::cout << "- " << memRequirements.alignment << "-byte allocation alignment\n";
+		std::string allowedMemTypeIndicesStr{};
+		bool isFirst{ true };
+		for (std::uint32_t i{ 0 }; i < 32; ++i)
+		{
+			if (memRequirements.memoryTypeBits & (1 << i))
+			{
+				if (!isFirst) { allowedMemTypeIndicesStr += ", "; }
+				allowedMemTypeIndicesStr += std::to_string(i);
+				isFirst = false;
+			}
+		}
+		std::cout << "- Allocated to memory-type-index in {" << allowedMemTypeIndicesStr << "}\n";
+	}
+
+	//Find a memory type that fits the requirements
+	std::uint32_t memTypeIndex{ UINT32_MAX };
+	VkMemoryPropertyFlags properties{ VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT };
+	VkPhysicalDeviceMemoryProperties physicalDeviceMemProps;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevices[physicalDeviceIndex], &physicalDeviceMemProps);
+	for (std::uint32_t i{ 0 }; i < physicalDeviceMemProps.memoryTypeCount; ++i)
+	{
+		//Check if this memory type is allowed for our buffer
+		if (!(memRequirements.memoryTypeBits & (1 << i))) { continue; }
+		if ((physicalDeviceMemProps.memoryTypes[i].propertyFlags & properties) != properties) { continue; }
+		
+		//This memory type is allowed
+		memTypeIndex = i;
+		if (debug) { std::cout << "Found suitable memory type at index " << i << "\n"; }
+		break;
+	}
+	if (memTypeIndex == UINT32_MAX)
+	{
+		std::cerr << "ERR::VKAPP::CREATEBUFFER::NO_AVAILABLE_MEMORY_TYPE_FITTING_REQUIREMENTS::SHUTTING_DOWN" << std::endl;
+		Shutdown(true);
+		return;
+	}
+
+	//Allocate an adequate region of memory for the buffer
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.pNext = nullptr;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = memTypeIndex;
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Allocating buffer memory"; }
+	result = vkAllocateMemory(device, &allocInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &bufferMemory);
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+
+	//Bind the allocated memory region to the buffer
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Binding buffer memory"; }
+	result = vkBindBufferMemory(device, buffer, bufferMemory, 0);
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << "(" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+}
+
+
+
+void VKApp::PopulateBuffer()
+{
+	if (debug) { std::cout << "\n\n\nPopulating Buffer\n"; }
+
+	//Map buffer memory
+	void* data;
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Mapping buffer memory"; }
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+	VkResult result{ vkMapMemory(device, bufferMemory, 0, memRequirements.size, 0, &data) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+
+	//Write to buffer (just use a test pattern for now)
+	memset(data, 0xCD, memRequirements.size);
+	if (debug) { std::cout << "Buffer memory filled with 0xCD pattern\n"; }
+
+	//Unmap the memory
+	vkUnmapMemory(device, bufferMemory);
+	if (debug) { std::cout << "Buffer memory unmapped\n"; }
+}
+
+
+
 void VKApp::Shutdown(bool _throwError)
 {
 	std::cout << "\n\n\nShutting down\n";
+
+	if (bufferMemory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory(device, bufferMemory, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		bufferMemory = VK_NULL_HANDLE;
+		std::cout << "Buffer Memory Freed\n";
+	}
+
+	if (buffer != VK_NULL_HANDLE)
+	{
+		vkDestroyBuffer(device, buffer, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		buffer = VK_NULL_HANDLE;
+		std::cout << "Buffer Destroyed\n";
+	}
 
 	if (commandPool != VK_NULL_HANDLE)
 	{
@@ -697,9 +843,19 @@ void VKApp::Shutdown(bool _throwError)
 	//Need to throw an exception here, otherwise an invalid VKApp object still exists
 	if (_throwError)
 	{
-		std::cerr << "VKApp Initialisation Failed" << std::endl;
+		std::cerr << "ERR::VKAPP::INITIALISATION_FAILED" << std::endl;
 		throw std::runtime_error("");
 	}
+}
+
+
+
+std::string GetFormattedSizeString(std::size_t numBytes)
+{
+	if (numBytes / (1024 * 1024 * 1024) != 0) { return std::to_string(numBytes / (1024 * 1024 * 1024)) + "GiB"; }
+	else if (numBytes / (1024 * 1024) != 0) { return std::to_string(numBytes / (1024 * 1024)) + "MiB"; }
+	else if (numBytes / 1024 != 0) { return std::to_string(numBytes / 1024) + "KiB"; }
+	else { return std::to_string(numBytes) + "B"; }
 }
 
 

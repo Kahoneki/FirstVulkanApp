@@ -44,6 +44,9 @@ private:
 	void CreateCommandPool();
 	void AllocateCommandBuffers();
 
+	void CreateBuffer();
+	void PopulateBuffer();
+
 	void Shutdown(bool _throwError=false);
 
 	//For debug print formatting
@@ -63,6 +66,8 @@ private:
 	VkQueue graphicsQueue;
 	VkCommandPool commandPool;
 	VkCommandBuffer commandBuffer;
+	VkBuffer buffer;
+	VkDeviceMemory bufferMemory;
 
 	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
 	std::size_t physicalDeviceIndex;
