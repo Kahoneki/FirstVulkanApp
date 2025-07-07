@@ -49,6 +49,8 @@ private:
 
 	void CreateDescriptorSetLayout();
 	void CreatePipelineLayout();
+	void CreateDescriptorPool();
+	void AllocateDescriptorSets();
 
 	void Shutdown(bool _throwError=false);
 
@@ -71,8 +73,10 @@ private:
 	VkCommandBuffer commandBuffer;
 	VkBuffer buffer;
 	VkDeviceMemory bufferMemory;
-	VkDescriptorSetLayout descSetLayout;
+	VkDescriptorSetLayout descriptorSetLayout;
 	VkPipelineLayout pipelineLayout;
+	VkDescriptorPool descriptorPool;
+	VkDescriptorSet descriptorSet;
 
 	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
 	std::size_t physicalDeviceIndex;

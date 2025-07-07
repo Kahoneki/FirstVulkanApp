@@ -29,8 +29,10 @@ VKApp::VKApp(const bool _debug,
 	commandPool = VK_NULL_HANDLE;
 	buffer = VK_NULL_HANDLE;
 	bufferMemory = VK_NULL_HANDLE;
-	descSetLayout = VK_NULL_HANDLE;
+	descriptorSetLayout = VK_NULL_HANDLE;
 	pipelineLayout = VK_NULL_HANDLE;
+	descriptorPool = VK_NULL_HANDLE;
+	descriptorSet = VK_NULL_HANDLE;
 	Init(_apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions);
 }
 
@@ -60,6 +62,8 @@ void VKApp::Init(const std::uint32_t _apiVer,
 	PopulateBuffer();
 	CreateDescriptorSetLayout();
 	CreatePipelineLayout();
+	CreateDescriptorPool();
+	AllocateDescriptorSets();
 }
 
 
@@ -824,7 +828,7 @@ void VKApp::CreateDescriptorSetLayout()
 	layoutInfo.pBindings = &uboLayoutBinding;
 
 	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating descriptor set layout"; }
-	VkResult result{ vkCreateDescriptorSetLayout(device, &layoutInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &descSetLayout ) };
+	VkResult result{ vkCreateDescriptorSetLayout(device, &layoutInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &descriptorSetLayout ) };
 	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
 	if (result != VK_SUCCESS)
 	{
@@ -845,7 +849,7 @@ void VKApp::CreatePipelineLayout()
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutInfo.pNext = nullptr;
 	layoutInfo.setLayoutCount = 1;
-	layoutInfo.pSetLayouts = &descSetLayout;
+	layoutInfo.pSetLayouts = &descriptorSetLayout;
 	layoutInfo.pushConstantRangeCount = 0;
 	layoutInfo.pPushConstantRanges = nullptr;
 
@@ -862,9 +866,70 @@ void VKApp::CreatePipelineLayout()
 
 
 
+void VKApp::CreateDescriptorPool()
+{
+	if (debug) { std::cout << "\n\n\nCreating Descriptor Pool\n"; }
+
+	//Define the pool sizes
+	VkDescriptorPoolSize poolSize;
+	poolSize.descriptorCount = 1;
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+	//Crete the pool
+	VkDescriptorPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.pNext = nullptr;
+	poolInfo.maxSets = 1;
+	poolInfo.poolSizeCount = 1;
+	poolInfo.pPoolSizes = &poolSize;
+	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating descriptor pool for 1 UBO descriptor"; }
+	VkResult result{ vkCreateDescriptorPool(device, &poolInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &descriptorPool) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+}
+
+
+
+void VKApp::AllocateDescriptorSets()
+{
+	if (debug) { std::cout << "\n\n\Allocating Descriptor Sets\n"; }
+
+	//Allocate the descriptor set
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.pNext = nullptr;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &descriptorSetLayout;
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Allocating " + std::to_string(allocInfo.descriptorSetCount) + " descriptor set" + (allocInfo.descriptorSetCount != 1 ? "s" : ""); }
+	VkResult result{ vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+}
+
+
+
 void VKApp::Shutdown(bool _throwError)
 {
 	std::cout << "\n\n\nShutting down\n";
+
+	if (descriptorPool != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorPool(device, descriptorPool, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		descriptorPool = VK_NULL_HANDLE;
+		std::cout << "Descriptor Pool (and all contained descriptor sets) Destroyed\n";
+	}
 
 	if (pipelineLayout != VK_NULL_HANDLE)
 	{
@@ -873,10 +938,10 @@ void VKApp::Shutdown(bool _throwError)
 		std::cout << "Pipeline Layout Destroyed\n";
 	}
 
-	if (descSetLayout != VK_NULL_HANDLE)
+	if (descriptorSetLayout != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorSetLayout(device, descSetLayout, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
-		descSetLayout = VK_NULL_HANDLE;
+		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		descriptorSetLayout = VK_NULL_HANDLE;
 		std::cout << "Descriptor Set Layout Destroyed\n";
 	}
 
