@@ -30,6 +30,7 @@ VKApp::VKApp(const bool _debug,
 	buffer = VK_NULL_HANDLE;
 	bufferMemory = VK_NULL_HANDLE;
 	descSetLayout = VK_NULL_HANDLE;
+	pipelineLayout = VK_NULL_HANDLE;
 	Init(_apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions);
 }
 
@@ -58,6 +59,7 @@ void VKApp::Init(const std::uint32_t _apiVer,
 	CreateBuffer();
 	PopulateBuffer();
 	CreateDescriptorSetLayout();
+	CreatePipelineLayout();
 }
 
 
@@ -834,9 +836,42 @@ void VKApp::CreateDescriptorSetLayout()
 
 
 
+void VKApp::CreatePipelineLayout()
+{
+	if (debug) { std::cout << "\n\n\nCreating Pipeline Layout\n"; }
+
+	//Define pipeline layout for our descriptor set
+	VkPipelineLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	layoutInfo.pNext = nullptr;
+	layoutInfo.setLayoutCount = 1;
+	layoutInfo.pSetLayouts = &descSetLayout;
+	layoutInfo.pushConstantRangeCount = 0;
+	layoutInfo.pPushConstantRanges = nullptr;
+
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating pipeline layout"; }
+	VkResult result{ vkCreatePipelineLayout(device, &layoutInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &pipelineLayout) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+}
+
+
+
 void VKApp::Shutdown(bool _throwError)
 {
 	std::cout << "\n\n\nShutting down\n";
+
+	if (pipelineLayout != VK_NULL_HANDLE)
+	{
+		vkDestroyPipelineLayout(device, pipelineLayout, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		pipelineLayout = VK_NULL_HANDLE;
+		std::cout << "Pipeline Layout Destroyed\n";
+	}
 
 	if (descSetLayout != VK_NULL_HANDLE)
 	{
