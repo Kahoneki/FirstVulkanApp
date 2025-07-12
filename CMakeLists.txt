@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 project(FirstVulkanApp)
 set(CMAKE_CXX_STANDARD 23)
 
-set(PROJECT_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/out")
+set(PROJECT_OUTPUT_DIR "${CMAKE_BINARY_DIR}")
 
 #Find all .cpp and .h files recursively (including those in /out/)
 file(GLOB_RECURSE ALL_PROJECT_FILES
@@ -23,7 +23,7 @@ foreach(FILE_PATH ${ALL_PROJECT_FILES})
 endforeach()
 
 #Output all the clean source files to be able to check that cleansing worked as expected
-message(STATUS "--- Final Filtered Source Files ---")
+message(STATUS "--- Final Filtered Source Files --- ${PROJECT_OUTPUT_DIR}")
 foreach(FILE ${CLEAN_SOURCE_FILES})
     message(STATUS "  ${FILE}")
 endforeach()
