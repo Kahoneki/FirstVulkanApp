@@ -1,11 +1,12 @@
+#include <vulkan/vulkan.h>
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
 #include <cstring>
-#include <vulkan/vulkan.h>
-#include "VKApp.h"
 #include <string>
+#include <fstream>
+#include "VKApp.h"
 
 namespace Neki
 {
@@ -33,6 +34,9 @@ VKApp::VKApp(const bool _debug,
 	pipelineLayout = VK_NULL_HANDLE;
 	descriptorPool = VK_NULL_HANDLE;
 	descriptorSet = VK_NULL_HANDLE;
+	vertexShaderModule = VK_NULL_HANDLE;
+	fragmentShaderModule = VK_NULL_HANDLE;
+	pipeline = VK_NULL_HANDLE;
 	Init(_apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions);
 }
 
@@ -65,6 +69,8 @@ void VKApp::Init(const std::uint32_t _apiVer,
 	CreateDescriptorPool();
 	AllocateDescriptorSets();
 	UpdateDescriptorSets();
+	CreateShaderModules();
+	CreatePipeline();
 }
 
 
@@ -950,9 +956,174 @@ void VKApp::UpdateDescriptorSets()
 
 
 
+void VKApp::CreateShaderModules()
+{
+	if (debug) { std::cout << "\n\n\Creating Shader Modules\n"; }
+	
+	//Read vertex shader
+	if (debug) { std::cout << "Reading vertex shader\n"; }
+	std::ifstream vertFile("shader.vert.spv", std::ios::ate | std::ios::binary);
+	if (!vertFile.is_open())
+	{
+		std::cerr << "ERR::VKAPP::CREATE_SHADER_MODULES::FAILED_TO_OPEN_VERTEX_SHADER" << std::endl;
+		throw std::runtime_error("");
+	}
+	std::size_t vertShaderFileSize{ static_cast<std::size_t>(vertFile.tellg()) };
+	std::vector<char> vertShaderBuf(vertShaderFileSize);
+	vertFile.seekg(0);
+	vertFile.read(vertShaderBuf.data(), vertShaderFileSize);
+	vertFile.close();
+	
+	//Read fragment shader
+	if (debug) { std::cout << "Reading fragment shader\n"; }
+	std::ifstream fragFile("shader.frag.spv", std::ios::ate | std::ios::binary);
+	if (!fragFile.is_open())
+	{
+		std::cerr << "ERR::VKAPP::CREATE_SHADER_MODULES::FAILED_TO_OPEN_FRAGMENT_SHADER" << std::endl;
+		throw std::runtime_error("");
+	}
+	std::size_t fragShaderFileSize{ static_cast<std::size_t>(fragFile.tellg()) };
+	std::vector<char> fragShaderBuf(fragShaderFileSize);
+	fragFile.seekg(0);
+	fragFile.read(fragShaderBuf.data(), fragShaderFileSize);
+	fragFile.close();
+
+
+	//Create vertexShaderModule
+	VkShaderModuleCreateInfo vertShaderModuleInfo{};
+	vertShaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	vertShaderModuleInfo.pNext = nullptr;
+	vertShaderModuleInfo.flags = 0;
+	vertShaderModuleInfo.codeSize = vertShaderBuf.size();
+	vertShaderModuleInfo.pCode = reinterpret_cast<const std::uint32_t*>(vertShaderBuf.data());
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating vertex shader module"; }
+	VkResult result{ vkCreateShaderModule(device, &vertShaderModuleInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &vertexShaderModule) };
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+
+	//Create fragmentShaderModule
+	VkShaderModuleCreateInfo fragShaderModuleInfo{};
+	fragShaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	fragShaderModuleInfo.pNext = nullptr;
+	fragShaderModuleInfo.flags = 0;
+	fragShaderModuleInfo.codeSize = fragShaderBuf.size();
+	fragShaderModuleInfo.pCode = reinterpret_cast<const std::uint32_t*>(fragShaderBuf.data());
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating fragment shader module"; }
+	result = vkCreateShaderModule(device, &fragShaderModuleInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &fragmentShaderModule);
+	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
+	if (result != VK_SUCCESS)
+	{
+		if (debug) { std::cout << " (" << result << ")\n"; }
+		Shutdown(true);
+		return;
+	}
+}
+
+
+
+void VKApp::CreatePipeline()
+{
+	if (debug) { std::cout << "\n\n\nCreating Graphics Pipeline\n"; }
+
+	//Define vertex shader stage
+	if (debug) { std::cout << "Defining vertex shader stage\n"; }
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.pNext = nullptr;
+	vertShaderStageInfo.flags = 0;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = vertexShaderModule;
+	vertShaderStageInfo.pName = "main";
+	vertShaderStageInfo.pSpecializationInfo = nullptr;
+
+	//Define fragment shader stage
+	if (debug) { std::cout << "Defining fragment shader stage\n"; }
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.pNext = nullptr;
+	fragShaderStageInfo.flags = 0;
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = fragmentShaderModule;
+	fragShaderStageInfo.pName = "main";
+	fragShaderStageInfo.pSpecializationInfo = nullptr;
+
+	VkPipelineShaderStageCreateInfo shaderStages[]{ vertShaderStageInfo, fragShaderStageInfo };
+
+	//Define vertex input (minimal since we're not using vertex buffers)
+	if (debug) { std::cout << "Defining vertex input\n"; }
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.pNext = nullptr;
+	vertexInputInfo.flags = 0;
+	vertexInputInfo.pVertexAttributeDescriptions = 0;
+	vertexInputInfo.pVertexBindingDescriptions = nullptr;
+	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+
+	//Define input assembly
+	if (debug) { std::cout << "Defining input assembly\n"; }
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.pNext = nullptr;
+	inputAssembly.flags = 0;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	//Define viewport and scissor as dynamic states
+	if (debug) { std::cout << "Defining viewport and scissor dynamic states\n"; }
+	std::vector<VkDynamicState> dynamicStates{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+	VkPipelineDynamicStateCreateInfo dynamicState{};
+	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicState.pNext = nullptr;
+	dynamicState.flags = 0;
+	dynamicState.dynamicStateCount = static_cast<std::uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates = dynamicStates.data();
+
+	//Define viewport state (even though we're using dynamic states for both viewport and scissor)
+	if (debug) { std::cout << "Defining viewport state\n"; }
+	VkPipelineViewportStateCreateInfo viewportState{};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.pNext = nullptr;
+	viewportState.flags = 0;
+	viewportState.viewportCount = 1;
+	viewportState.scissorCount = 1;
+	viewportState.pViewports = nullptr;
+	viewportState.pScissors = nullptr;
+
+
+}
+
+
+
 void VKApp::Shutdown(bool _throwError)
 {
 	std::cout << "\n\n\nShutting down\n";
+
+	if (pipeline != VK_NULL_HANDLE)
+	{
+		vkDestroyPipeline(device, pipeline, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		pipeline = VK_NULL_HANDLE;
+		std::cout << "Pipeline Destroyed\n";
+	}
+	
+	if (fragmentShaderModule != VK_NULL_HANDLE)
+	{
+		vkDestroyShaderModule(device, fragmentShaderModule, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		fragmentShaderModule = VK_NULL_HANDLE;
+		std::cout << "Fragment Shader Module Destroyed\n";
+	}
+
+	if (vertexShaderModule != VK_NULL_HANDLE)
+	{
+		vkDestroyShaderModule(device, vertexShaderModule, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr);
+		vertexShaderModule = VK_NULL_HANDLE;
+		std::cout << "Vertex Shader Module Destroyed\n";
+	}
 
 	if (descriptorPool != VK_NULL_HANDLE)
 	{

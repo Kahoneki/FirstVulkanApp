@@ -52,6 +52,8 @@ private:
 	void CreateDescriptorPool();
 	void AllocateDescriptorSets();
 	void UpdateDescriptorSets();
+	void CreateShaderModules();
+	void CreatePipeline();
 
 	void Shutdown(bool _throwError=false);
 
@@ -78,6 +80,9 @@ private:
 	VkPipelineLayout pipelineLayout;
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSet descriptorSet;
+	VkShaderModule vertexShaderModule;
+	VkShaderModule fragmentShaderModule;
+	VkPipeline pipeline;
 
 	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
 	std::size_t physicalDeviceIndex;

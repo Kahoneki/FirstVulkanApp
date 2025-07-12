@@ -23,7 +23,7 @@ foreach(FILE_PATH ${ALL_PROJECT_FILES})
 endforeach()
 
 #Output all the clean source files to be able to check that cleansing worked as expected
-message(STATUS "--- Final Filtered Source Files --- ${PROJECT_OUTPUT_DIR}")
+message(STATUS "--- Final Filtered Source Files --- dir: ${PROJECT_OUTPUT_DIR}")
 foreach(FILE ${CLEAN_SOURCE_FILES})
     message(STATUS "  ${FILE}")
 endforeach()
