@@ -2,8 +2,9 @@
 #define VKAPP_H
 
 #include <vulkan/vulkan.h>
-#include <cstdint>
 #include <vector>
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #include "VKDebugAllocator.h"
 
 namespace Neki
@@ -21,6 +22,8 @@ public:
 				   std::vector<const char*>* _desiredDeviceExtensions=nullptr);
 
 	~VKApp();
+
+	void Run();
 	
 private:
 	void Init(const std::uint32_t _apiVer,
@@ -31,11 +34,15 @@ private:
 			  std::vector<const char*>* _desiredDeviceExtensions);
 
 	//Init subfunctions
+	void CreateWindow();
+	
 	void CreateInstance(const std::uint32_t _apiVer,
 						const char* _appName,
 						std::vector<const char*>* _desiredInstanceLayers,
 						std::vector<const char*>* _desiredInstanceExtensions);
 
+	void CreateSurface();
+	
 	void SelectPhysicalDevice();
 
 	void CreateLogicalDevice(std::vector<const char*>* _desiredDeviceLayers,
@@ -53,7 +60,14 @@ private:
 	void AllocateDescriptorSets();
 	void UpdateDescriptorSets();
 	void CreateShaderModules();
+	void CreateSwapchain();
+	void CreateSwapchainImageViews();
+	void CreateRenderPass();
 	void CreatePipeline();
+	void CreateSwapchainFramebuffers();
+	void CreateSyncObjects();
+
+	void DrawFrame();
 
 	void Shutdown(bool _throwError=false);
 
@@ -69,11 +83,12 @@ private:
 
 	//Vulkan resources
 	VkInstance inst;
+	VkSurfaceKHR surface;
 	std::vector<VkPhysicalDevice> physicalDevices;
 	VkDevice device;
 	VkQueue graphicsQueue;
 	VkCommandPool commandPool;
-	VkCommandBuffer commandBuffer;
+	std::vector<VkCommandBuffer> commandBuffers;
 	VkBuffer buffer;
 	VkDeviceMemory bufferMemory;
 	VkDescriptorSetLayout descriptorSetLayout;
@@ -82,7 +97,18 @@ private:
 	VkDescriptorSet descriptorSet;
 	VkShaderModule vertexShaderModule;
 	VkShaderModule fragmentShaderModule;
+	VkRenderPass renderPass;
 	VkPipeline pipeline;
+	VkSwapchainKHR swapchain;
+	VkFormat swapchainImageFormat;
+	VkExtent2D swapchainExtent;
+	std::vector<VkImage> swapchainImages;
+	std::vector<VkImageView> swapchainImageViews;
+	std::vector<VkFramebuffer> swapchainFramebuffers;
+	std::vector<VkSemaphore> imageAvailableSemaphores;
+	std::vector<VkSemaphore> renderFinishedSemaphores;
+	std::vector<VkFence> inFlightFences;
+	std::vector<VkFence> imagesInFlight;
 
 	//Index into `physicalDevices` that will be used to create the logical device - prefer discrete GPU -> iGPU -> CPU
 	std::size_t physicalDeviceIndex;
@@ -95,6 +121,14 @@ private:
 	//Debug allocators (used if debug=true)
 	VKDebugAllocator instDebugAllocator;
 	VKDebugAllocator deviceDebugAllocator;
+
+	//The current frame being rendered
+	std::size_t currentFrame;
+	static constexpr std::size_t MAX_FRAMES_IN_FLIGHT{ 3 };
+	
+
+	//Window
+	GLFWwindow* window;
 };
 
 }

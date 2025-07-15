@@ -4,6 +4,22 @@ set(CMAKE_CXX_STANDARD 23)
 
 set(PROJECT_OUTPUT_DIR "${CMAKE_BINARY_DIR}")
 
+
+#Add GLFW
+include(FetchContent)
+set(GLFW_VERSION "3.4")
+FetchContent_Declare(
+        glfw
+        GIT_REPOSITORY https://github.com/glfw/glfw.git
+        GIT_TAG ${GLFW_VERSION}
+)
+#Prevent GLFW from trying to find packages (e.g.: Doxygen)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(glfw)
+
+
 #Find all .cpp and .h files recursively (including those in /out/)
 file(GLOB_RECURSE ALL_PROJECT_FILES
     "${CMAKE_SOURCE_DIR}/*.h"
@@ -32,9 +48,10 @@ message(STATUS "------------------------------------")
 #Use the clean list to create the executable
 add_executable(FirstVulkanApp ${CLEAN_SOURCE_FILES})
 
-#Link Vulkan
+
+#Link Vulkan and GLFW
 find_package(Vulkan REQUIRED)
-target_link_libraries(FirstVulkanApp PRIVATE Vulkan::Vulkan)
+target_link_libraries(FirstVulkanApp PRIVATE Vulkan::Vulkan glfw)
 
 
 #Shader compilation
@@ -79,5 +96,4 @@ add_custom_target(
     Shaders
     DEPENDS ${SPIRV_OUTPUTS}
 )
-
 add_dependencies(FirstVulkanApp Shaders)
