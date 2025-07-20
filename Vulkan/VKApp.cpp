@@ -954,7 +954,7 @@ void VKApp::CreateDescriptorPool()
 	poolInfo.poolSizeCount = 1;
 	poolInfo.pPoolSizes = &poolSize;
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating descriptor pool for 1 UBO descriptor"; }
+	if (debug) { std::cout << std::left << std::setw(debugW) << "Creating descriptor pool for 1 SSBO descriptor"; }
 	VkResult result{ vkCreateDescriptorPool(device, &poolInfo, debug ? static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator) : nullptr, &descriptorPool) };
 	if (debug) { std::cout << (result == VK_SUCCESS ? "success\n" : "failure"); }
 	if (result != VK_SUCCESS)
@@ -1531,7 +1531,7 @@ void VKApp::CreateSyncObjects()
 {
 	if (debug) { std::cout << "\n\n\nCreating Sync Objects\n"; }
 
-	//Allow for 2 frames to be in-flight at once
+	//Allow for MAX_FRAMES_IN_FLIGHT frames to be in-flight at once
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1568,7 +1568,7 @@ void VKApp::DrawFrame()
 	// if (debug) { std::cout << "Drawing frame " << currentFrame << '\n'; }
 
 	
-	//Wait for previous frame to finish
+	//Wait for previous frame of this frame index to finish before overwriting resources
 	vkWaitForFences(device, 1, &(inFlightFences[currentFrame]), VK_TRUE, UINT64_MAX);
 
 	std::uint32_t imageIndex;
@@ -1579,9 +1579,10 @@ void VKApp::DrawFrame()
 		vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
 	}
 	
-	//Mark the image as now being in use by this frame
+	//Mark the image as now being in use by this frame - tying its synchronisation to this frame's fence
 	imagesInFlight[imageIndex] = inFlightFences[currentFrame];
-	
+
+	//Reset back to unsignalled
 	vkResetFences(device, 1, &(inFlightFences[currentFrame]));
 
 	
