@@ -22,31 +22,37 @@ FetchContent_MakeAvailable(glfw)
 
 #Find all .cpp and .h files recursively (including those in /out/)
 file(GLOB_RECURSE ALL_PROJECT_FILES
-    "${CMAKE_SOURCE_DIR}/*.h"
-    "${CMAKE_SOURCE_DIR}/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/*.h"
+    "${CMAKE_SOURCE_DIR}/src/*.cpp"
 )
 
-#Create an empty list to store the clean source files (those not in the /out/ directory)
-set(CLEAN_SOURCE_FILES "")
 
-#Loop through every file path that the glob found and check if in the project output dir (/out/)
-foreach(FILE_PATH ${ALL_PROJECT_FILES})
-    string(FIND "${FILE_PATH}" "${PROJECT_OUTPUT_DIR}" IS_IN_PROJECT_OUTPUT_DIR) #returns 0 if substring is found, otherwise returns -1
-    if(IS_IN_PROJECT_OUTPUT_DIR EQUAL -1)
-        #File not in output dir, add to CLEAN_SOURCE_FILES
-        list(APPEND CLEAN_SOURCE_FILES ${FILE_PATH})
-    endif()
-endforeach()
+#----NO LONGER USED - SOURCE FILES ARE NOW LOCATED IN /src/ SUBDIRECTORY----#
+##Create an empty list to store the clean source files (those not in the /out/ directory)
+#set(CLEAN_SOURCE_FILES "")
+#
+##Loop through every file path that the glob found and check if in the project output dir (/out/)
+#foreach(FILE_PATH ${ALL_PROJECT_FILES})
+#    string(FIND "${FILE_PATH}" "${PROJECT_OUTPUT_DIR}" IS_IN_PROJECT_OUTPUT_DIR) #returns 0 if substring is found, otherwise returns -1
+#    if(IS_IN_PROJECT_OUTPUT_DIR EQUAL -1)
+#        #File not in output dir, add to CLEAN_SOURCE_FILES
+#        list(APPEND CLEAN_SOURCE_FILES ${FILE_PATH})
+#    endif()
+#endforeach()
 
 #Output all the clean source files to be able to check that cleansing worked as expected
 message(STATUS "--- Final Filtered Source Files --- dir: ${PROJECT_OUTPUT_DIR}")
-foreach(FILE ${CLEAN_SOURCE_FILES})
+foreach(FILE ${ALL_PROJECT_FILES})
     message(STATUS "  ${FILE}")
 endforeach()
 message(STATUS "------------------------------------")
 
 #Use the clean list to create the executable
-add_executable(FirstVulkanApp ${CLEAN_SOURCE_FILES})
+add_executable(FirstVulkanApp ${ALL_PROJECT_FILES}
+        src/Vulkan/Core/VulkanDevice.cpp
+        src/Vulkan/Core/VulkanDevice.h
+        src/Vulkan/Debug/VKLogger.cpp
+        src/Vulkan/Debug/VKLogger.h)
 
 
 #Link Vulkan and GLFW
@@ -66,8 +72,8 @@ message(STATUS "Found glslc: ${GLSLC_EXECUTABLE}")
 
 #Define shader files
 file(GLOB_RECURSE SHADER_SOURCES
-    "${CMAKE_SOURCE_DIR}/Vulkan/Shaders/*.vert"
-    "${CMAKE_SOURCE_DIR}/Vulkan/Shaders/*.frag"
+    "${CMAKE_SOURCE_DIR}/Shaders/*.vert"
+    "${CMAKE_SOURCE_DIR}/Shaders/*.frag"
 )
 message(STATUS "--- Found Shader Files ---")
 foreach(FILE ${SHADER_SOURCES})
