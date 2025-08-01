@@ -36,7 +36,7 @@ public:
 				   std::vector<const char*>* _desiredDeviceLayers=nullptr,
 				   std::vector<const char*>* _desiredDeviceExtensions=nullptr);
 
-	~VKApp();
+	~VKApp() = default;
 
 	void Run();
 	
@@ -58,9 +58,10 @@ private:
 	void InitialiseVertexBuffer();
 	void InitialiseUBO();
 	void CreateDescriptorSet();
-	void UpdateDescriptorSet();
+	void BindDescriptorSet();
 	void CreatePipeline();
 
+	void UpdateVertexBuffer();
 	void DrawFrame();
 	
 	//Raw vulkan resources

@@ -6,9 +6,9 @@
 #include <cstring>
 #include <string>
 #include <fstream>
+#include <cmath>
 
 #include "VKApp.h"
-#include "../Utils/Strings/format.h"
 
 namespace Neki
 {
@@ -37,13 +37,9 @@ VKApp::VKApp(VkExtent2D _windowSize,
 	InitialiseVertexBuffer();
 	InitialiseUBO();
 	CreateDescriptorSet();
-	UpdateDescriptorSet();
+	BindDescriptorSet();
 	CreatePipeline();
 }
-
-
-
-VKApp::~VKApp() {}
 
 
 
@@ -184,12 +180,12 @@ void VKApp::CreateDescriptorSet()
 
 
 
-void VKApp::UpdateDescriptorSet()
+void VKApp::BindDescriptorSet()
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Updating Descriptor Set\n");
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Binding Descriptor Set\n");
 
-	//Update descriptor set to make descriptor at binding 0 point to VKApp::buffer
+	//Bind descriptor set to make descriptor at binding 0 point to VKApp::buffer
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = ubo;
 	bufferInfo.offset = 0;
@@ -239,6 +235,38 @@ void VKApp::CreatePipeline()
 
 
 
+void VKApp::UpdateVertexBuffer()
+{
+	//Map buffer memory
+	void* data;
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vertexBuffer, &memRequirements);
+	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer), 0, memRequirements.size, 0, &data) };
+	if (result != VK_SUCCESS)
+	{
+		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION,"Mapping vertex buffer failed (" + std::to_string(result) + ")\n");
+		throw std::runtime_error("");
+	}
+	
+	//Rotate the vertices
+	float* vertexPositions{ reinterpret_cast<float*>(data) };
+	constexpr float speed{ 0.0005f }; //yes this is janky
+	for (std::size_t i{ 0 }; i<6; i+=2)
+	{
+		float* x{ &(vertexPositions[i]) };
+		float* y{ &(vertexPositions[i+1]) };
+		float newX{ *x * std::cos(speed) - *y * std::sin(speed) };
+		float newY{ *x * std::sin(speed) + *y * std::cos(speed) };
+		*x = newX;
+		*y = newY;
+	}
+
+	//Unmap the memory
+	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer));
+}
+
+
+
 void VKApp::DrawFrame()
 {
 
@@ -247,6 +275,8 @@ void VKApp::DrawFrame()
 	clearValue.color = {0.0f, 1.0f, 0.0f, 0.0f};
 	
 	vulkanRenderManager->StartFrame(clearValue);
+
+	UpdateVertexBuffer();
 	
 	vkCmdBindPipeline(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipeline());
 	constexpr VkDeviceSize vertexBufferOffset{ 0 };
