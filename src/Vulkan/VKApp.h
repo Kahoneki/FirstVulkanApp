@@ -36,7 +36,7 @@ public:
 				   std::vector<const char*>* _desiredDeviceLayers=nullptr,
 				   std::vector<const char*>* _desiredDeviceExtensions=nullptr);
 
-	~VKApp() = default;
+	~VKApp();
 
 	void Run();
 	
@@ -61,6 +61,7 @@ private:
 	void BindDescriptorSet();
 	void CreatePipeline();
 
+	void UpdateUBO();
 	void UpdateVertexBuffer();
 	void DrawFrame();
 	
@@ -69,6 +70,9 @@ private:
 	VkBuffer ubo;
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 	std::vector<VkDescriptorSet> descriptorSets;
+
+	void* vertexBufferMap;
+	void* uboMap;
 };
 
 }

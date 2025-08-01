@@ -43,6 +43,19 @@ VKApp::VKApp(VkExtent2D _windowSize,
 
 
 
+VKApp::~VKApp()
+{
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION,"Shutting down VKApp\n");
+
+	//Unmap buffers
+	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ubo));
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::APPLICATION, "\tUBO memory unmapped\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer));
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::APPLICATION, "\tVertex buffer memory unmapped\n", VK_LOGGER_WIDTH::DEFAULT, false);
+}
+
+
+
 void VKApp::Run()
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
@@ -78,11 +91,10 @@ void VKApp::InitialiseVertexBuffer()
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating Vertex Buffer\n");
 
 	//Map buffer memory
-	void* data;
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Mapping vertex buffer memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkMemoryRequirements memRequirements;
 	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vertexBuffer, &memRequirements);
-	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer), 0, memRequirements.size, 0, &data) };
+	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer), 0, memRequirements.size, 0, &vertexBufferMap) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
 	{
@@ -91,12 +103,8 @@ void VKApp::InitialiseVertexBuffer()
 	}
 	
 	//Write to buffer
-	memcpy(data, vertices, static_cast<std::size_t>(bufferSize));
+	memcpy(vertexBufferMap, vertices, static_cast<std::size_t>(bufferSize));
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Vertex buffer memory filled with triangle data\n");
-
-	//Unmap the memory
-	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer));
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Vertex buffer memory unmapped\n");
 }
 
 
@@ -115,11 +123,10 @@ void VKApp::InitialiseUBO()
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating UBO\n");
 
 	//Map buffer memory
-	void* data;
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Mapping UBO memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkMemoryRequirements memRequirements;
 	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), ubo, &memRequirements);
-	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ubo), 0, memRequirements.size, 0, &data) };
+	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ubo), 0, memRequirements.size, 0, &uboMap) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
 	{
@@ -128,12 +135,8 @@ void VKApp::InitialiseUBO()
 	}
 
 	//Write to buffer
-	memcpy(data, colour, static_cast<std::size_t>(bufferSize));
+	memcpy(uboMap, colour, static_cast<std::size_t>(bufferSize));
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "UBO memory filled with colour\n");
-
-	//Unmap the memory
-	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ubo));
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "UBO memory unmapped\n");
 }
 
 
@@ -237,19 +240,8 @@ void VKApp::CreatePipeline()
 
 void VKApp::UpdateVertexBuffer()
 {
-	//Map buffer memory
-	void* data;
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vertexBuffer, &memRequirements);
-	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer), 0, memRequirements.size, 0, &data) };
-	if (result != VK_SUCCESS)
-	{
-		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION,"Mapping vertex buffer failed (" + std::to_string(result) + ")\n");
-		throw std::runtime_error("");
-	}
-	
 	//Rotate the vertices
-	float* vertexPositions{ reinterpret_cast<float*>(data) };
+	float* vertexPositions{ static_cast<float*>(vertexBufferMap) };
 	constexpr float speed{ 0.0005f }; //yes this is janky
 	for (std::size_t i{ 0 }; i<6; i+=2)
 	{
@@ -260,9 +252,19 @@ void VKApp::UpdateVertexBuffer()
 		*x = newX;
 		*y = newY;
 	}
+}
 
-	//Unmap the memory
-	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer));
+
+
+void VKApp::UpdateUBO()
+{
+	//Make the colour pulse in a sine wave
+	const double time{ glfwGetTime() };
+	float* colour{ static_cast<float*>(uboMap) };
+	constexpr float speed{ 1.0f }; //yes this is janky
+	colour[0] = (std::sin(time * speed) + 1.0f) / 2.0f;
+	colour[1] = (std::cos(time * speed) + 1.0f) / 2.0f;
+	colour[2] = 0.5f;
 }
 
 
@@ -277,14 +279,14 @@ void VKApp::DrawFrame()
 	vulkanRenderManager->StartFrame(clearValue);
 
 	UpdateVertexBuffer();
+	UpdateUBO();
 	
 	vkCmdBindPipeline(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipeline());
 	constexpr VkDeviceSize vertexBufferOffset{ 0 };
 	vkCmdBindVertexBuffers(vulkanRenderManager->GetCurrentCommandBuffer(), 0, 1, &vertexBuffer, &vertexBufferOffset);
 	vkCmdBindDescriptorSets(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipelineLayout(), 0, 1, descriptorSets.data(), 0, nullptr);
-
 	
-	//Define viewport and scissor
+	//Define viewport
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -294,11 +296,11 @@ void VKApp::DrawFrame()
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(vulkanRenderManager->GetCurrentCommandBuffer(), 0, 1, &viewport);
 
+	//Define scissor
 	VkRect2D scissor{};
 	scissor.offset = {0,0};
 	scissor.extent = vulkanRenderManager->GetSwapchainExtent();
 	vkCmdSetScissor(vulkanRenderManager->GetCurrentCommandBuffer(), 0, 1, &scissor);
-
 	
 	//Draw the damn triangle
 	vkCmdDraw(vulkanRenderManager->GetCurrentCommandBuffer(), 3, 1, 0, 0);
