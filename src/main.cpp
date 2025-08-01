@@ -13,12 +13,18 @@ void VKTest()
 	std::uint32_t glfwExtensionCount{ 0 };
 	const char** glfwExtensions{ glfwGetRequiredInstanceExtensions(&glfwExtensionCount) };
 	desiredInstanceExtensionNames.insert(desiredInstanceExtensionNames.end(), glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+	Neki::VKLoggerConfig loggerConfig{ true };
 	
 	Neki::VKApp app
 	(
-		true,
+		{800, 800},
+		Neki::VulkanRenderManager::GetDefaultRenderPassCreateInfo().createInfo,
+		Neki::VulkanDescriptorPool::PresetSize(Neki::DESCRIPTOR_POOL_PRESET_SIZE::SINGLE_SSBO),
 		VK_MAKE_API_VERSION(0, 1, 4, 0),
 		"Neki App",
+		loggerConfig,
+		Neki::VK_ALLOCATOR_TYPE::DEBUG,
 		&desiredInstanceLayerNames,
 		&desiredInstanceExtensionNames,
 		&desiredDeviceLayerNames,

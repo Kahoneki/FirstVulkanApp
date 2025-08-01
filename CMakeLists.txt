@@ -48,11 +48,7 @@ endforeach()
 message(STATUS "------------------------------------")
 
 #Use the clean list to create the executable
-add_executable(FirstVulkanApp ${ALL_PROJECT_FILES}
-        src/Vulkan/Core/VulkanDevice.cpp
-        src/Vulkan/Core/VulkanDevice.h
-        src/Vulkan/Debug/VKLogger.cpp
-        src/Vulkan/Debug/VKLogger.h)
+add_executable(FirstVulkanApp ${ALL_PROJECT_FILES})
 
 
 #Link Vulkan and GLFW
