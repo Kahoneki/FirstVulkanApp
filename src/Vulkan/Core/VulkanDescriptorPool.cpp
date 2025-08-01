@@ -152,6 +152,10 @@ VkDescriptorPoolSize VulkanDescriptorPool::PresetSize(DESCRIPTOR_POOL_PRESET_SIZ
 		size.descriptorCount = 1;
 		size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		break;
+	case DESCRIPTOR_POOL_PRESET_SIZE::SINGLE_UBO:
+		size.descriptorCount = 1;
+		size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		break;
 	default:
 		//Logger inaccessible in static function, sad.
 		throw std::runtime_error(std::string("PresetSize() provided _preset (") + std::to_string(static_cast<std::underlying_type_t<DESCRIPTOR_POOL_PRESET_SIZE>>(_preset)) + std::string(") is not a valid DESCRIPTOR_POOL_PRESET_SIZE"));

@@ -32,10 +32,10 @@ VKApp::VKApp(VkExtent2D _windowSize,
 	  bufferFactory(std::make_unique<BufferFactory>(logger, deviceDebugAllocator, *vulkanDevice))
 {
 	vertexBuffer = VK_NULL_HANDLE;
-	ssbo = VK_NULL_HANDLE;
+	ubo = VK_NULL_HANDLE;
 
 	InitialiseVertexBuffer();
-	InitialiseSSBO();
+	InitialiseUBO();
 	CreateDescriptorSet();
 	UpdateDescriptorSet();
 	CreatePipeline();
@@ -105,21 +105,25 @@ void VKApp::InitialiseVertexBuffer()
 
 
 
-void VKApp::InitialiseSSBO()
+void VKApp::InitialiseUBO()
 {
+	//Define colour data
+	constexpr float colour[] { 1.0f, 1.0f, 1.0f, 1.0f };
+	const VkDeviceSize bufferSize{ 4 * sizeof(float) };
+	
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating SSBO\n");
-	ssbo = bufferFactory->AllocateBuffer(1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating UBO\n");
+	ubo = bufferFactory->AllocateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating SSBO\n");
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating UBO\n");
 
 	//Map buffer memory
 	void* data;
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Mapping SSBO memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Mapping UBO memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), ssbo, &memRequirements);
-	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ssbo), 0, memRequirements.size, 0, &data) };
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), ubo, &memRequirements);
+	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ubo), 0, memRequirements.size, 0, &data) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
 	{
@@ -127,13 +131,13 @@ void VKApp::InitialiseSSBO()
 		throw std::runtime_error("");
 	}
 
-	//Write to buffer (just use a test pattern for now)
-	memset(data, 0xCD, memRequirements.size);
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "SSBO memory filled with test pattern (0xCD)\n");
+	//Write to buffer
+	memcpy(data, colour, static_cast<std::size_t>(bufferSize));
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "UBO memory filled with colour\n");
 
 	//Unmap the memory
-	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ssbo));
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "SSBO memory unmapped\n");
+	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ubo));
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "UBO memory unmapped\n");
 }
 
 
@@ -145,12 +149,12 @@ void VKApp::CreateDescriptorSet()
 
 	descriptorSetLayouts.resize(1);
 
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Defining SSBO binding at binding point 0 accessible to the vertex stage\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Defining UBO binding at binding point 0 accessible to the vertex stage\n");
 	
 	//Define descriptor binding 0 as a uniform buffer accessible from the vertex shader
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
 	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
 	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	uboLayoutBinding.pImmutableSamplers = nullptr;
@@ -165,7 +169,7 @@ void VKApp::CreateDescriptorSet()
 
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Creating descriptor set layout", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), ssbo, &memRequirements);
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), ubo, &memRequirements);
 	VkResult result{ vkCreateDescriptorSetLayout(vulkanDevice->GetDevice(), &layoutInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &(descriptorSetLayouts[0]) ) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
@@ -187,7 +191,7 @@ void VKApp::UpdateDescriptorSet()
 
 	//Update descriptor set to make descriptor at binding 0 point to VKApp::buffer
 	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = ssbo;
+	bufferInfo.buffer = ubo;
 	bufferInfo.offset = 0;
 	bufferInfo.range = VK_WHOLE_SIZE;
 
@@ -198,7 +202,7 @@ void VKApp::UpdateDescriptorSet()
 	descriptorWrite.dstBinding = 0;
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorCount = 1;
-	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	descriptorWrite.pBufferInfo = &bufferInfo;
 	descriptorWrite.pTexelBufferView = nullptr;
 	descriptorWrite.pImageInfo = nullptr;

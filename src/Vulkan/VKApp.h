@@ -56,7 +56,7 @@ private:
 
 	//Init subfunctions
 	void InitialiseVertexBuffer();
-	void InitialiseSSBO();
+	void InitialiseUBO();
 	void CreateDescriptorSet();
 	void UpdateDescriptorSet();
 	void CreatePipeline();
@@ -65,7 +65,7 @@ private:
 	
 	//Raw vulkan resources
 	VkBuffer vertexBuffer;
-	VkBuffer ssbo;
+	VkBuffer ubo;
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 	std::vector<VkDescriptorSet> descriptorSets;
 };

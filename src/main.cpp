@@ -20,7 +20,7 @@ void VKTest()
 	(
 		{800, 800},
 		Neki::VulkanRenderManager::GetDefaultRenderPassCreateInfo().createInfo,
-		Neki::VulkanDescriptorPool::PresetSize(Neki::DESCRIPTOR_POOL_PRESET_SIZE::SINGLE_SSBO),
+		Neki::VulkanDescriptorPool::PresetSize(Neki::DESCRIPTOR_POOL_PRESET_SIZE::SINGLE_UBO),
 		VK_MAKE_API_VERSION(0, 1, 4, 0),
 		"Neki App",
 		loggerConfig,

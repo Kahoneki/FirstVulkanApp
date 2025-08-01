@@ -16,6 +16,7 @@ namespace Neki
 enum class DESCRIPTOR_POOL_PRESET_SIZE
 {
 	SINGLE_SSBO,
+	SINGLE_UBO,
 };
 
 class VulkanDescriptorPool
