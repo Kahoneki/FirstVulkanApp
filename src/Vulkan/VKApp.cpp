@@ -31,9 +31,11 @@ VKApp::VKApp(VkExtent2D _windowSize,
 	  vulkanDescriptorPool(std::make_unique<VulkanDescriptorPool>(logger, deviceDebugAllocator, *vulkanDevice, _descriptorPoolSize)),
 	  bufferFactory(std::make_unique<BufferFactory>(logger, deviceDebugAllocator, *vulkanDevice))
 {
-	buffer = VK_NULL_HANDLE;
+	vertexBuffer = VK_NULL_HANDLE;
+	ssbo = VK_NULL_HANDLE;
 
-	InitialiseBuffer();
+	InitialiseVertexBuffer();
+	InitialiseSSBO();
 	CreateDescriptorSet();
 	UpdateDescriptorSet();
 	CreatePipeline();
@@ -61,21 +63,63 @@ void VKApp::Run()
 
 
 
-void VKApp::InitialiseBuffer()
+void VKApp::InitialiseVertexBuffer()
 {
+	//Define vertex buffer data
+	constexpr float vertices[]
+	{
+		-0.5f, 0.5f,
+		0.0f, -0.5f,
+		0.5f, 0.5f
+	};
+	const VkDeviceSize bufferSize{ 6 * sizeof(float) };
+	
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating Buffer\n");
-	buffer = bufferFactory->AllocateBuffer(1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating Vertex Buffer\n");
+	vertexBuffer = bufferFactory->AllocateBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating Buffer\n");
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating Vertex Buffer\n");
 
 	//Map buffer memory
 	void* data;
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Mapping buffer memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Mapping vertex buffer memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), buffer, &memRequirements);
-	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(buffer), 0, memRequirements.size, 0, &data) };
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vertexBuffer, &memRequirements);
+	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer), 0, memRequirements.size, 0, &data) };
+	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
+	if (result != VK_SUCCESS)
+	{
+		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION," (" + std::to_string(result) + ")\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		throw std::runtime_error("");
+	}
+	
+	//Write to buffer
+	memcpy(data, vertices, static_cast<std::size_t>(bufferSize));
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Vertex buffer memory filled with triangle data\n");
+
+	//Unmap the memory
+	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer));
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Vertex buffer memory unmapped\n");
+}
+
+
+
+void VKApp::InitialiseSSBO()
+{
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating SSBO\n");
+	ssbo = bufferFactory->AllocateBuffer(1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating SSBO\n");
+
+	//Map buffer memory
+	void* data;
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Mapping SSBO memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), ssbo, &memRequirements);
+	VkResult result{ vkMapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ssbo), 0, memRequirements.size, 0, &data) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
 	{
@@ -85,11 +129,11 @@ void VKApp::InitialiseBuffer()
 
 	//Write to buffer (just use a test pattern for now)
 	memset(data, 0xCD, memRequirements.size);
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Buffer memory filled with test pattern (0xCD)\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "SSBO memory filled with test pattern (0xCD)\n");
 
 	//Unmap the memory
-	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(buffer));
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Buffer memory unmapped\n");
+	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ssbo));
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "SSBO memory unmapped\n");
 }
 
 
@@ -108,7 +152,7 @@ void VKApp::CreateDescriptorSet()
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	uboLayoutBinding.pImmutableSamplers = nullptr;
 	
 	//Create the descriptor set layout
@@ -121,7 +165,7 @@ void VKApp::CreateDescriptorSet()
 
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "Creating descriptor set layout", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), buffer, &memRequirements);
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), ssbo, &memRequirements);
 	VkResult result{ vkCreateDescriptorSetLayout(vulkanDevice->GetDevice(), &layoutInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &(descriptorSetLayouts[0]) ) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::APPLICATION, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
@@ -143,7 +187,7 @@ void VKApp::UpdateDescriptorSet()
 
 	//Update descriptor set to make descriptor at binding 0 point to VKApp::buffer
 	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.buffer = buffer;
+	bufferInfo.buffer = ssbo;
 	bufferInfo.offset = 0;
 	bufferInfo.range = VK_WHOLE_SIZE;
 
@@ -170,7 +214,23 @@ void VKApp::CreatePipeline()
 {
 	VKGraphicsPipelineCleanDesc piplDesc{};
 	piplDesc.renderPass = vulkanRenderManager->GetRenderPass();
-	vulkanGraphicsPipeline = std::make_unique<VulkanGraphicsPipeline>(logger, deviceDebugAllocator, *vulkanDevice, &descriptorSetLayouts, &piplDesc, "shader.vert", "shader.frag");
+
+	VkVertexInputBindingDescription vertInputBindingDesc{};
+	vertInputBindingDesc.binding = 0;
+	vertInputBindingDesc.stride = 2 * sizeof(float);
+	vertInputBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	piplDesc.vertexBindingDescriptionCount = 1;
+	piplDesc.pVertexBindingDescriptions = &vertInputBindingDesc;
+
+	VkVertexInputAttributeDescription vertInputAttribDesc{};
+	vertInputAttribDesc.location = 0;
+	vertInputAttribDesc.binding = 0;
+	vertInputAttribDesc.format = VK_FORMAT_R32G32_SFLOAT;
+	vertInputAttribDesc.offset = 0;
+	piplDesc.vertexAttributeDescriptionCount = 1;
+	piplDesc.pVertexAttributeDescriptions = &vertInputAttribDesc;
+	
+	vulkanGraphicsPipeline = std::make_unique<VulkanGraphicsPipeline>(logger, deviceDebugAllocator, *vulkanDevice, &piplDesc, "shader.vert", "shader.frag", nullptr, nullptr, &descriptorSetLayouts);
 }
 
 
@@ -185,6 +245,9 @@ void VKApp::DrawFrame()
 	vulkanRenderManager->StartFrame(clearValue);
 	
 	vkCmdBindPipeline(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipeline());
+	constexpr VkDeviceSize vertexBufferOffset{ 0 };
+	vkCmdBindVertexBuffers(vulkanRenderManager->GetCurrentCommandBuffer(), 0, 1, &vertexBuffer, &vertexBufferOffset);
+	vkCmdBindDescriptorSets(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipelineLayout(), 0, 1, descriptorSets.data(), 0, nullptr);
 
 	
 	//Define viewport and scissor

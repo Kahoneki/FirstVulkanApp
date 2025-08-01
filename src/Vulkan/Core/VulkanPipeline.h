@@ -21,12 +21,13 @@ namespace Neki
 		VulkanPipeline(const VKLogger& _logger,
 					   VKDebugAllocator& _deviceDebugAllocator,
 					   const VulkanDevice& _device,
-					   const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts,
+					   const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts=nullptr,
 					   const std::vector<VkPushConstantRange>* _pushConstantRanges=nullptr);
 
 		virtual ~VulkanPipeline();
 
 		[[nodiscard]] VkPipeline GetPipeline();
+		[[nodiscard]] VkPipelineLayout GetPipelineLayout();
 		
 	protected:
 		//Called in VulkanPipeline's constructor

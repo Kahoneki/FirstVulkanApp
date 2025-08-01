@@ -87,12 +87,12 @@ public:
 	VulkanGraphicsPipeline(const VKLogger& _logger,
 	                       VKDebugAllocator& _deviceDebugAllocator,
 	                       const VulkanDevice& _device,
-	                       const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts,
 	                       const VKGraphicsPipelineCleanDesc* _desc,
 	                       const char* _vertFilepath,
 	                       const char* _fragFilepath,
 	                       const char* _tessCtrlFilepath=nullptr,
 	                       const char* _tessEvalFilepath=nullptr,
+	                       const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts=nullptr,
 	                       const std::vector<VkPushConstantRange>* _pushConstantRanges=nullptr);
 
 	~VulkanGraphicsPipeline() override = default;

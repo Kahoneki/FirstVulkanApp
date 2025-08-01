@@ -7,7 +7,7 @@ namespace Neki
 
 
 
-VulkanGraphicsPipeline::VulkanGraphicsPipeline(const VKLogger &_logger, VKDebugAllocator &_deviceDebugAllocator, const VulkanDevice &_device, const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts, const VKGraphicsPipelineCleanDesc* _desc, const char* _vertFilepath, const char* _fragFilepath, const char* _tessCtrlFilepath, const char* _tessEvalFilepath, const std::vector<VkPushConstantRange>* _pushConstantRanges)
+VulkanGraphicsPipeline::VulkanGraphicsPipeline(const VKLogger &_logger, VKDebugAllocator &_deviceDebugAllocator, const VulkanDevice &_device, const VKGraphicsPipelineCleanDesc* _desc, const char* _vertFilepath, const char* _fragFilepath, const char* _tessCtrlFilepath, const char* _tessEvalFilepath, const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts, const std::vector<VkPushConstantRange>* _pushConstantRanges)
 													: VulkanPipeline(_logger, _deviceDebugAllocator, _device, _descriptorSetLayouts, _pushConstantRanges)
 {
 	std::vector<const char*> filepaths{ _vertFilepath, _fragFilepath };
@@ -151,7 +151,8 @@ void VulkanGraphicsPipeline::CreatePipeline(const VKPipelineCleanDesc *_desc)
 	//Todo: add tessellation
 	
 	VkPipelineShaderStageCreateInfo shaderStages[]{ vertShaderStageInfo, fragShaderStageInfo };
-	
+
+	//Define vertex input
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::PIPELINE, "Defining vertex input\n");
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

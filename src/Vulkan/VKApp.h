@@ -55,7 +55,8 @@ private:
 	std::unique_ptr<VulkanGraphicsPipeline> vulkanGraphicsPipeline;
 
 	//Init subfunctions
-	void InitialiseBuffer();
+	void InitialiseVertexBuffer();
+	void InitialiseSSBO();
 	void CreateDescriptorSet();
 	void UpdateDescriptorSet();
 	void CreatePipeline();
@@ -63,7 +64,8 @@ private:
 	void DrawFrame();
 	
 	//Raw vulkan resources
-	VkBuffer buffer;
+	VkBuffer vertexBuffer;
+	VkBuffer ssbo;
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 	std::vector<VkDescriptorSet> descriptorSets;
 };

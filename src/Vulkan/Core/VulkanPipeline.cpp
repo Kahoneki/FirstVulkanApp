@@ -59,6 +59,13 @@ VkPipeline VulkanPipeline::GetPipeline()
 
 
 
+VkPipelineLayout VulkanPipeline::GetPipelineLayout()
+{
+	return layout;
+}
+
+
+
 void VulkanPipeline::CreatePipelineLayout()
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::PIPELINE, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
@@ -68,8 +75,8 @@ void VulkanPipeline::CreatePipelineLayout()
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutInfo.pNext = nullptr;
-	layoutInfo.setLayoutCount = descriptorSetLayouts->size();
-	layoutInfo.pSetLayouts = descriptorSetLayouts->data();
+	layoutInfo.setLayoutCount = descriptorSetLayouts ? descriptorSetLayouts->size() : 0;
+	layoutInfo.pSetLayouts = descriptorSetLayouts ? descriptorSetLayouts->data() : nullptr;
 	layoutInfo.pushConstantRangeCount = pushConstantRanges ? pushConstantRanges->size() : 0;
 	layoutInfo.pPushConstantRanges = pushConstantRanges ? pushConstantRanges->data() : nullptr;
 
