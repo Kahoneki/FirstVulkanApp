@@ -38,7 +38,7 @@ struct VKGraphicsPipelineCleanDesc final : VKPipelineCleanDesc
 	VkBool32 rasteriserDiscardEnable{ VK_FALSE };
 	VkPolygonMode polygonMode{ VK_POLYGON_MODE_FILL };
 	float lineWidth{ 1.0f };
-	VkCullModeFlags cullMode{ VK_CULL_MODE_NONE };
+	VkCullModeFlags cullMode{ VK_CULL_MODE_BACK_BIT };
 	VkFrontFace frontFace{ VK_FRONT_FACE_CLOCKWISE };
 	VkBool32 depthBiasEnable{ VK_FALSE };
 	float depthBiasConstantFactor{ 0.0f };

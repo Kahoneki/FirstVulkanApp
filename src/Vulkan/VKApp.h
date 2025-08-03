@@ -43,11 +43,10 @@ public:
 	void Run();
 	
 private:
-	//Dependency injections to sub-classes
 	VKLogger logger;
 	VKDebugAllocator instDebugAllocator;
 	VKDebugAllocator deviceDebugAllocator;
-	
+
 	//Sub-classes
 	std::unique_ptr<VulkanDevice> vulkanDevice;
 	std::unique_ptr<VulkanCommandPool> vulkanCommandPool;
@@ -57,22 +56,24 @@ private:
 	std::unique_ptr<ImageFactory> imageFactory;
 	std::unique_ptr<VulkanGraphicsPipeline> vulkanGraphicsPipeline;
 
+	//Init sub-functions
 	void InitialiseVertexBuffer();
+	void InitialiseIndexBuffer();
 	void InitialiseUBO();
 	void InitialiseSampler();
 	void InitialiseImage();
-	
-	
 	void CreateDescriptorSet();
 	void BindDescriptorSet();
 	void CreatePipeline();
 
+	//Per-frame functions
 	void UpdateUBO();
 	void UpdateVertexBuffer();
 	void DrawFrame();
 	
 	//Raw vulkan resources
 	VkBuffer vertexBuffer;
+	VkBuffer indexBuffer;
 	VkBuffer ubo;
 	VkSampler sampler;
 	VkImage image;
@@ -80,6 +81,7 @@ private:
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet descriptorSet;
 
+	//Persistent buffer maps
 	void* vertexBufferMap;
 	void* uboMap;
 };
