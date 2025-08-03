@@ -50,28 +50,28 @@ namespace Neki
 		switch (_channel)
 		{
 		case VK_LOGGER_CHANNEL::INFO:
-			channelStr = "INFO";
+			channelStr = "[INFO]";
 			colourCode = COLOUR_WHITE;
 			break;
 		case VK_LOGGER_CHANNEL::HEADING:
-			channelStr = "HEADING";
+			channelStr = "[HEADING]";
 			colourCode = COLOUR_CYAN;
 			break;
 		case VK_LOGGER_CHANNEL::WARNING:
-			channelStr = "WARNING";
+			channelStr = "[WARNING]";
 			colourCode = COLOUR_YELLOW;
 			break;
 		case VK_LOGGER_CHANNEL::ERROR:
-			channelStr = "ERROR";
+			channelStr = "[ERROR]";
 			colourCode = COLOUR_RED;
 			break;
 		case VK_LOGGER_CHANNEL::SUCCESS:
-			channelStr = "SUCCESS";
+			channelStr = "[SUCCESS]";
 			colourCode = COLOUR_GREEN;
 			break;
 		default:
 			std::cerr << std::endl << "ERR::VKLOGGER::LOG::DEFAULT_SEVERITY_CASE_REACHED::CHANNEL_WAS_" << std::to_string(static_cast<std::underlying_type_t<VK_LOGGER_CHANNEL>>(_channel)) << "::FALLING_BACK_TO_DEFAULT_CHANNEL" << std::endl;
-			channelStr = "DEFAULT";
+			channelStr = "[DEFAULT]";
 			colourCode = COLOUR_RESET;
 			break;
 		}
@@ -81,7 +81,8 @@ namespace Neki
 		stream << colourCode;
 		if (_formatted)
 		{
-			stream << '[' << channelStr << "] [" << LayerToString(_layer) << "] ";	
+			stream << std::left << std::setw(static_cast<std::underlying_type_t<VK_LOGGER_WIDTH>>(VK_LOGGER_WIDTH::CHANNEL)) << channelStr <<
+					  std::left << std::setw(static_cast<std::underlying_type_t<VK_LOGGER_WIDTH>>(VK_LOGGER_WIDTH::LAYER)) << LayerToString(_layer);	
 		}
 		if (_width != VK_LOGGER_WIDTH::DEFAULT) { stream << std::left << std::setw(static_cast<std::underlying_type_t<VK_LOGGER_WIDTH>>(_width)); }
 		stream << _message << COLOUR_RESET;
@@ -92,14 +93,15 @@ namespace Neki
 	{
 		switch (_layer)
 		{
-			case VK_LOGGER_LAYER::DEVICE:			return "DEVICE";
-			case VK_LOGGER_LAYER::COMMAND_POOL:		return "COMMAND POOL";
-			case VK_LOGGER_LAYER::RENDER_MANAGER:	return "RENDER MANAGER";
-			case VK_LOGGER_LAYER::DESCRIPTOR_POOL:	return "DESCRIPTOR POOL";
-			case VK_LOGGER_LAYER::PIPELINE:			return "PIPELINE";
-			case VK_LOGGER_LAYER::BUFFER_FACTORY:	return "BUFFER FACTORY";
-			case VK_LOGGER_LAYER::APPLICATION:		return "APPLICATION";
-			default:								return "UNDEFINED";
+			case VK_LOGGER_LAYER::DEVICE:			return "[DEVICE]";
+			case VK_LOGGER_LAYER::COMMAND_POOL:		return "[COMMAND POOL]";
+			case VK_LOGGER_LAYER::RENDER_MANAGER:	return "[RENDER MANAGER]";
+			case VK_LOGGER_LAYER::DESCRIPTOR_POOL:	return "[DESCRIPTOR POOL]";
+			case VK_LOGGER_LAYER::PIPELINE:			return "[PIPELINE]";
+			case VK_LOGGER_LAYER::BUFFER_FACTORY:	return "[BUFFER FACTORY]";
+			case VK_LOGGER_LAYER::IMAGE_FACTORY:	return "[IMAGE FACTORY]";
+			case VK_LOGGER_LAYER::APPLICATION:		return "[APPLICATION]";
+			default:								return "[UNDEFINED]";
 		}
 	}
 

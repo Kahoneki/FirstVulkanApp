@@ -12,7 +12,11 @@ namespace Neki
 	enum class VK_LOGGER_WIDTH : std::uint32_t
 	{
 		DEFAULT = 0,
-		SUCCESS_FAILURE = 65,
+		SUCCESS_FAILURE = 80,
+
+		//For internal use
+		CHANNEL = 10,
+		LAYER = 20,
 	};
 
 

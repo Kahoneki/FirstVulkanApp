@@ -92,8 +92,10 @@ public:
 	                       const char* _fragFilepath,
 	                       const char* _tessCtrlFilepath=nullptr,
 	                       const char* _tessEvalFilepath=nullptr,
-	                       const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts=nullptr,
-	                       const std::vector<VkPushConstantRange>* _pushConstantRanges=nullptr);
+	                       const std::uint32_t _descriptorSetLayoutCount=0,
+	                       const VkDescriptorSetLayout* const _descriptorSetLayouts=nullptr,
+	                       const std::uint32_t _pushConstantRangeCount=0,
+	                       const VkPushConstantRange* const _pushConstantRanges=nullptr);
 
 	~VulkanGraphicsPipeline() override = default;
 

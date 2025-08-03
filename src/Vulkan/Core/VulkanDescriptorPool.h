@@ -17,6 +17,7 @@ enum class DESCRIPTOR_POOL_PRESET_SIZE
 {
 	SINGLE_SSBO,
 	SINGLE_UBO,
+	SINGLE_COMBINED_IMAGE_SAMPLER,
 };
 
 class VulkanDescriptorPool
@@ -25,7 +26,8 @@ public:
 	explicit VulkanDescriptorPool(const VKLogger& _logger,
 							   VKDebugAllocator& _deviceDebugAllocator,
 							   const VulkanDevice& _device,
-							   const VkDescriptorPoolSize& _poolSize);
+							   const std::uint32_t _poolSizeCount,
+							   const VkDescriptorPoolSize* _poolSizes);
 
 	~VulkanDescriptorPool();
 

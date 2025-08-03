@@ -27,8 +27,8 @@ public:
 	//Free a specific buffer
 	void FreeBuffer(VkBuffer& _buffer);
 
-	//Free a vector of buffers
-	void FreeBuffers(std::vector<VkBuffer>& _buffers);
+	//Free a list of _count buffers
+	void FreeBuffers(std::uint32_t _count, VkBuffer* _buffers);
 
 
 	[[nodiscard]] VkDeviceMemory GetMemory(VkBuffer _buffer);

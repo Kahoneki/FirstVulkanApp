@@ -20,11 +20,23 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
 
 
+#Add stb_image
+FetchContent_Declare(
+        stb_image
+        GIT_REPOSITORY https://github.com/nothings/stb.git
+        GIT_TAG master #stb on master is stable
+)
+FetchContent_MakeAvailable(stb_image)
+
+
 #Find all .cpp and .h files recursively (including those in /out/)
 file(GLOB_RECURSE ALL_PROJECT_FILES
     "${CMAKE_SOURCE_DIR}/src/*.h"
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
 )
+
+#Remove stb_image.cpp so as to not double-compile it (compiled further down)
+#list(REMOVE_ITEM ALL_PROJECT_FILES ${CMAKE_SOURCE_DIR}/src/External/stb_image.cpp)
 
 
 #----NO LONGER USED - SOURCE FILES ARE NOW LOCATED IN /src/ SUBDIRECTORY----#
@@ -51,7 +63,8 @@ message(STATUS "------------------------------------")
 add_executable(FirstVulkanApp ${ALL_PROJECT_FILES})
 
 
-#Link Vulkan and GLFW
+#Link Vulkan, GLFW, and stb_image
+target_include_directories(FirstVulkanApp PRIVATE ${stb_image_SOURCE_DIR})
 find_package(Vulkan REQUIRED)
 target_link_libraries(FirstVulkanApp PRIVATE Vulkan::Vulkan glfw)
 
@@ -99,3 +112,8 @@ add_custom_target(
     DEPENDS ${SPIRV_OUTPUTS}
 )
 add_dependencies(FirstVulkanApp Shaders)
+
+
+
+#Copy all resource files to the output directory, maintaining directory structure
+file(COPY "${CMAKE_SOURCE_DIR}/Resource Files/" DESTINATION "${CMAKE_BINARY_DIR}/Resource Files/")

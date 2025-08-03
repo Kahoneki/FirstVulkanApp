@@ -21,8 +21,10 @@ namespace Neki
 		VulkanPipeline(const VKLogger& _logger,
 					   VKDebugAllocator& _deviceDebugAllocator,
 					   const VulkanDevice& _device,
-					   const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts=nullptr,
-					   const std::vector<VkPushConstantRange>* _pushConstantRanges=nullptr);
+					   const std::uint32_t _descriptorSetLayoutCount=0,
+					   const VkDescriptorSetLayout* const _descriptorSetLayouts=nullptr,
+					   const std::uint32_t _pushConstantRangeCount=0,
+					   const VkPushConstantRange* const _pushConstantRanges=nullptr);
 
 		virtual ~VulkanPipeline();
 
@@ -31,7 +33,7 @@ namespace Neki
 		
 	protected:
 		//Called in VulkanPipeline's constructor
-		void CreatePipelineLayout();
+		void CreatePipelineLayout(const std::uint32_t _descriptorSetLayoutCount, const std::uint32_t _pushConstantRangeCount);
 
 		//Called in derived class' constructors
 		virtual void CreateShaderModules(const std::vector<const char*>& _filepaths) = 0;
@@ -41,8 +43,8 @@ namespace Neki
 		const VKLogger& logger;
 		const VKDebugAllocator& deviceDebugAllocator;
 		const VulkanDevice& device;
-		const std::vector<VkDescriptorSetLayout>* descriptorSetLayouts;
-		const std::vector<VkPushConstantRange>* pushConstantRanges;
+		const VkDescriptorSetLayout* const descriptorSetLayouts;
+		const VkPushConstantRange* const pushConstantRanges;
 		
 		VkPipelineLayout layout;
 		VkPipeline pipeline;

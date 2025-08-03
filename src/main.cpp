@@ -15,12 +15,15 @@ void VKTest()
 	desiredInstanceExtensionNames.insert(desiredInstanceExtensionNames.end(), glfwExtensions, glfwExtensions + glfwExtensionCount);
 
 	Neki::VKLoggerConfig loggerConfig{ true };
+
+	VkDescriptorPoolSize descriptorPoolSizes[]{ {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} };
 	
 	Neki::VKApp app
 	(
 		{800, 800},
 		Neki::VulkanRenderManager::GetDefaultRenderPassCreateInfo().createInfo,
-		Neki::VulkanDescriptorPool::PresetSize(Neki::DESCRIPTOR_POOL_PRESET_SIZE::SINGLE_UBO),
+		2,
+		descriptorPoolSizes,
 		VK_MAKE_API_VERSION(0, 1, 4, 0),
 		"Neki App",
 		loggerConfig,

@@ -427,7 +427,7 @@ void VulkanRenderManager::CreateSwapchain()
 		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER, "Present mode: " + std::to_string(presentMode) + " (" + (presentMode == 0 ? "IMMEDIATE)\n" :
 																																				(presentMode == 1 ? "MAILBOX)\n" :
 																																				(presentMode == 2 ? "FIFO)\n" :
-																																				(presentMode == 3 ? "FIFO_RELAXED\n" : ")\n")))));
+																																				(presentMode == 3 ? "FIFO_RELAXED\n" : ")\n")))), VK_LOGGER_WIDTH::DEFAULT, false);
 	}
 	
 	//Choose suitable present mode

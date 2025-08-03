@@ -79,7 +79,7 @@ VkCommandBuffer VulkanCommandPool::AllocateCommandBuffer(VkCommandBufferLevel _l
 	
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::COMMAND_POOL, "Allocating a single " + std::string(_level == VK_COMMAND_BUFFER_LEVEL_PRIMARY ? "primary" : "secondary") + " command buffer for " + PoolTypeToString(poolType) + " pool", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkResult result{ vkAllocateCommandBuffers(device.GetDevice(), &allocInfo, &buffer) };
-	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::COMMAND_POOL, result == VK_SUCCESS ? "success" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::COMMAND_POOL, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
 	{
 		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::COMMAND_POOL," (" + std::to_string(result) + ")\n", VK_LOGGER_WIDTH::DEFAULT, false);
@@ -119,7 +119,7 @@ std::vector<VkCommandBuffer> VulkanCommandPool::AllocateCommandBuffers(std::uint
 
 void VulkanCommandPool::FreeCommandBuffer(VkCommandBuffer& _buffer)
 {
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::COMMAND_POOL, "Freeing 1 command buffer");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::COMMAND_POOL, "Freeing 1 command buffer\n");
 	vkFreeCommandBuffers(device.GetDevice(), pool, 1, &_buffer);
 }
 
@@ -127,7 +127,7 @@ void VulkanCommandPool::FreeCommandBuffer(VkCommandBuffer& _buffer)
 
 void VulkanCommandPool::FreeCommandBuffers(std::vector<VkCommandBuffer>& _buffers)
 {
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::COMMAND_POOL, "Freeing " + std::to_string(_buffers.size()) + " command buffer" + std::string(_buffers.size() == 1 ? "" : "s"));
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::COMMAND_POOL, "Freeing " + std::to_string(_buffers.size()) + " command buffer" + std::string(_buffers.size() == 1 ? "" : "s") + "\n");
 	vkFreeCommandBuffers(device.GetDevice(), pool, _buffers.size(), _buffers.data());
 }
 
@@ -135,7 +135,7 @@ void VulkanCommandPool::FreeCommandBuffers(std::vector<VkCommandBuffer>& _buffer
 
 void VulkanCommandPool::Reset(VkCommandPoolResetFlags _flags)
 {
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::COMMAND_POOL, "Resetting command pool");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::COMMAND_POOL, "Resetting command pool\n");
 	vkResetCommandPool(device.GetDevice(), pool, _flags);
 }
 

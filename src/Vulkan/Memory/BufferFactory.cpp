@@ -20,20 +20,20 @@ BufferFactory::BufferFactory(const VKLogger& _logger, VKDebugAllocator& _deviceD
 
 BufferFactory::~BufferFactory()
 {
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::BUFFER_FACTORY,"Shutting down VulkanBufferFactory\n");
-	for (std::unordered_map<VkBuffer, VkDeviceMemory>::iterator it{ bufferMemoryMap.begin() }; it != bufferMemoryMap.end(); ++it)
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::BUFFER_FACTORY,"Shutting down BufferFactory\n");
+	while (!bufferMemoryMap.empty())
 	{
-		VkBuffer b{ it->first };
-		FreeBufferImpl(b);
+		VkBuffer buffer{ bufferMemoryMap.begin()->first };
+		FreeBufferImpl(buffer);
 	}
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tAll buffers and underlying memory freed\n", VK_LOGGER_WIDTH::DEFAULT, false);
 }
 
 
 
 VkBuffer BufferFactory::AllocateBuffer(const VkDeviceSize& _size, const VkBufferUsageFlags& _usage, const VkSharingMode& _sharingMode, const VkMemoryPropertyFlags _requiredMemFlags)
 {
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::BUFFER_FACTORY, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::BUFFER_FACTORY,"Allocating 1 Buffer And Associated Memory\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY,"Allocating 1 Buffer And Associated Memory\n");
 	return AllocateBufferImpl(_size, _usage, _sharingMode, _requiredMemFlags);
 }
 
@@ -41,7 +41,7 @@ VkBuffer BufferFactory::AllocateBuffer(const VkDeviceSize& _size, const VkBuffer
 
 std::vector<VkBuffer> BufferFactory::AllocateBuffers(std::uint32_t _count, const VkDeviceSize* _sizes, const VkBufferUsageFlags* _usages, const VkSharingMode* _sharingModes, const VkMemoryPropertyFlags* _requiredMemFlags)
 {
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::BUFFER_FACTORY,"\n\n\nAllocating " + std::to_string(_count) + " Buffer" + std::string(_count == 1 ? "" : "s") + " And Associated Memory\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY,"Allocating " + std::to_string(_count) + " Buffer" + std::string(_count == 1 ? "" : "s") + " And Associated Memory\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	std::vector<VkBuffer> buffers;
 	for (std::size_t i{ 0 }; i<_count; ++i)
 	{
@@ -54,18 +54,18 @@ std::vector<VkBuffer> BufferFactory::AllocateBuffers(std::uint32_t _count, const
 
 void BufferFactory::FreeBuffer(VkBuffer& _buffer)
 {
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY,"\tFreeing 1 buffer and associated memory\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY,"Freeing 1 Buffer And Associated Memory\n");
 	FreeBufferImpl(_buffer);
 }
 
 
 
-void BufferFactory::FreeBuffers(std::vector<VkBuffer>& _buffers)
+void BufferFactory::FreeBuffers(std::uint32_t _count, VkBuffer* _buffers)
 {
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY,"\tFreeing " + std::to_string(_buffers.size()) + " buffer" + std::string(_buffers.size() == 1 ? "" : "s") + " and associated memory\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	for (VkBuffer& b : _buffers)
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::BUFFER_FACTORY,"Freeing " + std::to_string(_count) + " Buffer" + std::string(_count == 1 ? "" : "s") + " And Associated Memory\n");
+	for (std::size_t i{ 0 }; i<_count; ++i)
 	{
-		FreeBufferImpl(b);
+		FreeBufferImpl(_buffers[i]);
 	}
 }
 
@@ -194,9 +194,9 @@ void BufferFactory::FreeBufferImpl(VkBuffer& _buffer)
 	if (_buffer != VK_NULL_HANDLE)
 	{
 		vkDestroyBuffer(device.GetDevice(), _buffer, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
-		_buffer = VK_NULL_HANDLE;
 	}
 	bufferMemoryMap.erase(_buffer);
+	_buffer = VK_NULL_HANDLE;
 }
 
 

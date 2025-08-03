@@ -8,7 +8,7 @@ namespace Neki
 
 
 
-VulkanDescriptorPool::VulkanDescriptorPool(const VKLogger &_logger, VKDebugAllocator &_deviceDebugAllocator, const VulkanDevice &_device, const VkDescriptorPoolSize &_poolSize)
+VulkanDescriptorPool::VulkanDescriptorPool(const VKLogger& _logger, VKDebugAllocator& _deviceDebugAllocator, const VulkanDevice& _device, const std::uint32_t poolSizeCount, const VkDescriptorPoolSize* _poolSizes)
 										  : logger(_logger), deviceDebugAllocator(_deviceDebugAllocator), device(_device)
 {
 	pool = VK_NULL_HANDLE;
@@ -21,8 +21,8 @@ VulkanDescriptorPool::VulkanDescriptorPool(const VKLogger &_logger, VKDebugAlloc
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.pNext = nullptr;
 	poolInfo.maxSets = 1;
-	poolInfo.poolSizeCount = 1;
-	poolInfo.pPoolSizes = &_poolSize;
+	poolInfo.poolSizeCount = poolSizeCount;
+	poolInfo.pPoolSizes = _poolSizes;
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DESCRIPTOR_POOL, "Creating descriptor pool", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkResult result{ vkCreateDescriptorPool(device.GetDevice(), &poolInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &pool) };

@@ -7,8 +7,8 @@ namespace Neki
 
 
 
-VulkanGraphicsPipeline::VulkanGraphicsPipeline(const VKLogger &_logger, VKDebugAllocator &_deviceDebugAllocator, const VulkanDevice &_device, const VKGraphicsPipelineCleanDesc* _desc, const char* _vertFilepath, const char* _fragFilepath, const char* _tessCtrlFilepath, const char* _tessEvalFilepath, const std::vector<VkDescriptorSetLayout>* _descriptorSetLayouts, const std::vector<VkPushConstantRange>* _pushConstantRanges)
-													: VulkanPipeline(_logger, _deviceDebugAllocator, _device, _descriptorSetLayouts, _pushConstantRanges)
+VulkanGraphicsPipeline::VulkanGraphicsPipeline(const VKLogger &_logger, VKDebugAllocator &_deviceDebugAllocator, const VulkanDevice &_device, const VKGraphicsPipelineCleanDesc* _desc, const char* _vertFilepath, const char* _fragFilepath, const char* _tessCtrlFilepath, const char* _tessEvalFilepath, const std::uint32_t _descriptorSetLayoutCount, const VkDescriptorSetLayout* const _descriptorSetLayouts, const std::uint32_t _pushConstantRangeCount, const VkPushConstantRange* const _pushConstantRanges)
+													: VulkanPipeline(_logger, _deviceDebugAllocator, _device, _descriptorSetLayoutCount, _descriptorSetLayouts, _pushConstantRangeCount, _pushConstantRanges)
 {
 	std::vector<const char*> filepaths{ _vertFilepath, _fragFilepath };
 	if (_tessCtrlFilepath)

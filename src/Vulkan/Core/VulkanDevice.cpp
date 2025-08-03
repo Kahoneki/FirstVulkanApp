@@ -580,9 +580,11 @@ void VulkanDevice::CreateLogicalDevice(std::vector<const char *> *_desiredDevice
 	VkPhysicalDeviceFeatures supportedFeatures;
 	VkPhysicalDeviceFeatures requiredFeatures{};
 	vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
-	requiredFeatures.multiDrawIndirect = supportedFeatures.multiDrawIndirect;
-	requiredFeatures.tessellationShader = VK_TRUE;
-	requiredFeatures.geometryShader = VK_TRUE;
+	if (supportedFeatures.samplerAnisotropy) { requiredFeatures.samplerAnisotropy = VK_TRUE; }
+	else
+	{
+		logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Sampler anisotropy is not supported by this device.\n");
+	}
 
 	VkDeviceQueueCreateInfo queueCreateInfo{};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
