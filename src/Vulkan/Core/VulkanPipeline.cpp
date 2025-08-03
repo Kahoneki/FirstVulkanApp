@@ -25,7 +25,7 @@ VulkanPipeline::~VulkanPipeline()
 	{
 		vkDestroyPipeline(device.GetDevice(), pipeline, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 		pipeline = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::PIPELINE,"\tPipeline Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::PIPELINE,"  Pipeline Destroyed\n");
 	}
 
 	if (!shaderModules.empty())
@@ -37,7 +37,7 @@ VulkanPipeline::~VulkanPipeline()
 				vkDestroyShaderModule(device.GetDevice(), m, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 			}
 		}
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::PIPELINE,"\tDescriptor Set Layouts Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::PIPELINE,"  Descriptor Set Layouts Destroyed\n");
 	}
 	shaderModules.clear();
 
@@ -45,7 +45,7 @@ VulkanPipeline::~VulkanPipeline()
 	{
 		vkDestroyPipelineLayout(device.GetDevice(), layout, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 		layout = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::PIPELINE,"\tPipeline Layout Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::PIPELINE,"  Pipeline Layout Destroyed\n");
 
 	}
 }

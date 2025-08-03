@@ -48,6 +48,28 @@ VulkanDevice::VulkanDevice(const VKLogger& _logger,
 
 
 
+VulkanDevice::~VulkanDevice()
+{
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::DEVICE,"Shutting down VulkanDevice\n");
+	
+	if (device != VK_NULL_HANDLE)
+	{
+		vkDeviceWaitIdle(device);
+		vkDestroyDevice(device, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
+		device = VK_NULL_HANDLE;
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DEVICE,"  Device Destroyed\n");
+	}
+
+	if (inst != VK_NULL_HANDLE)
+	{
+		vkDestroyInstance(inst, static_cast<const VkAllocationCallbacks*>(instDebugAllocator));
+		inst = VK_NULL_HANDLE;
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DEVICE,"  Instance Destroyed\n");
+	}
+}
+
+
+
 void VulkanDevice::CreateInstance(const std::uint32_t _apiVer, const char* _appName, std::vector<const char*>* _desiredInstanceLayers, std::vector<const char*>* _desiredInstanceExtensions)
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::DEVICE, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
@@ -309,17 +331,17 @@ void VulkanDevice::SelectPhysicalDevice()
 		VkPhysicalDeviceMemoryProperties memProps;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevices[i], &memProps);
 
-		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "\tDevice: " + std::to_string(i) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
-		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "\tAvailable heaps: " + std::to_string(memProps.memoryHeapCount) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "  Device: " + std::to_string(i) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "  Available heaps: " + std::to_string(memProps.memoryHeapCount) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
 		for (std::size_t j{ 0 }; j < memProps.memoryHeapCount; ++j)
 		{
-			std::string heapDescStr{ "\t\tHeap " + std::to_string(j) + " (" + ((memProps.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? "VRAM" : "RAM") + ", " + GetFormattedSizeString(memProps.memoryHeaps[j].size) + ")\n" };
+			std::string heapDescStr{ "    Heap " + std::to_string(j) + " (" + ((memProps.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? "VRAM" : "RAM") + ", " + GetFormattedSizeString(memProps.memoryHeaps[j].size) + ")\n" };
 			logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, heapDescStr, VK_LOGGER_WIDTH::DEFAULT, false);
 		}
-		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "\tAvailable memory types: " + std::to_string(memProps.memoryTypeCount) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "  Available memory types: " + std::to_string(memProps.memoryTypeCount) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
 		for (std::size_t j{ 0 }; j < memProps.memoryTypeCount; ++j)
 		{
-			std::string memTypePropFlagsString{ "\t\tMemory type " + std::to_string(j) + " (Heap " + std::to_string(memProps.memoryTypes[j].heapIndex) + ", " };
+			std::string memTypePropFlagsString{ "    Memory type " + std::to_string(j) + " (Heap " + std::to_string(memProps.memoryTypes[j].heapIndex) + ", " };
 			if (memProps.memoryTypes[j].propertyFlags == 0)
 			{
 				memTypePropFlagsString += "Base)\n";
@@ -352,12 +374,12 @@ void VulkanDevice::SelectPhysicalDevice()
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[i], &queueFamilyCount, nullptr);
 		queueFamilyProperties.resize(queueFamilyCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[i], &queueFamilyCount, queueFamilyProperties.data());
-		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "\tDevice: " + std::to_string(i) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
-		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "\tQueue Families: " + std::to_string(queueFamilyCount) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "  Device: " + std::to_string(i) + "\n");
+		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "  Queue Families: " + std::to_string(queueFamilyCount) + "\n");
 
 		for (std::size_t j{ 0 }; j < queueFamilyCount; ++j)
 		{
-			std::string queueFamilyFlagsString{ "\t\tQueue family " + std::to_string(j) + " ( " + std::to_string(queueFamilyProperties[j].queueCount) + "queues, " };
+			std::string queueFamilyFlagsString{ "    Queue family " + std::to_string(j) + " ( " + std::to_string(queueFamilyProperties[j].queueCount) + "queues, " };
 			if (queueFamilyProperties[j].queueFlags == 0)
 			{
 				queueFamilyFlagsString += "Base)\n";
@@ -622,28 +644,6 @@ void VulkanDevice::CreateLogicalDevice(std::vector<const char *> *_desiredDevice
 	//Get the queue handle
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "Getting queue handle\n");
 	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
-}
-
-
-
-VulkanDevice::~VulkanDevice()
-{
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::DEVICE,"Shutting down VulkanDevice\n");
-	
-	if (device != VK_NULL_HANDLE)
-	{
-		vkDeviceWaitIdle(device);
-		vkDestroyDevice(device, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
-		device = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DEVICE,"\tDevice Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	}
-
-	if (inst != VK_NULL_HANDLE)
-	{
-		vkDestroyInstance(inst, static_cast<const VkAllocationCallbacks*>(instDebugAllocator));
-		inst = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DEVICE,"\tInstance Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	}
 }
 
 

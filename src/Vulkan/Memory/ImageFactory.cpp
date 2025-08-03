@@ -29,19 +29,19 @@ ImageFactory::~ImageFactory()
 		VkImageView imgView{ imageViewImageMap.begin()->first };
 		FreeImageViewImpl(imgView);
 	}
-	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tAll image views freed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "  All image views freed\n");
 	while (!imageMemoryMap.empty())
 	{
 		VkImage img{ imageMemoryMap.begin()->first };
 		FreeImageImpl(img);
 	}
-	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tAll images and underlying memory freed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "  All images and underlying memory freed\n");
 	while (!samplers.empty()) {
 		//Get sampler from back for efficient removal from vector
 		VkSampler sampler = samplers.back();
 		FreeSamplerImpl(sampler);
 	}
-	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tAll images and underlying memory freed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "  All images and underlying memory freed\n");
 }
 
 
@@ -171,20 +171,20 @@ VkImage ImageFactory::AllocateImageImpl(const char* _filepath, const VkImageUsag
 	//Load the data to disk
 	ImageData imgData{ ImageLoader::Load(_filepath) };
 	if (_out_metadata != nullptr) { *_out_metadata = imgData.metadata; }
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tLoaded " + std::string(_filepath) + " from disk (" + std::to_string(imgData.metadata.width) + "x" + std::to_string(imgData.metadata.height) + ", " + std::to_string(imgData.metadata.channels) + " channels)\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Loaded " + std::string(_filepath) + " from disk (" + std::to_string(imgData.metadata.width) + "x" + std::to_string(imgData.metadata.height) + ", " + std::to_string(imgData.metadata.channels) + " channels)\n");
 
 	//Create temporary staging buffer
 	const VkDeviceSize imgSize{ static_cast<VkDeviceSize>(imgData.metadata.width * imgData.metadata.height * imgData.metadata.channels) }; //Assume 1 byte per channel
 	VkBuffer stagingBuffer{ bufferFactory.AllocateBuffer(imgSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) };
 
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tCreated temporary staging buffer of size " + GetFormattedSizeString(imgSize) + "\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Created temporary staging buffer of size " + GetFormattedSizeString(imgSize) + "\n");
 	
 	//Copy pixel data to staging buffer
 	void* mappedMemory;
 	vkMapMemory(device.GetDevice(), bufferFactory.GetMemory(stagingBuffer), 0, imgSize, 0, &mappedMemory);
 	memcpy(mappedMemory, imgData.pixels, imgSize);
 	vkUnmapMemory(device.GetDevice(), bufferFactory.GetMemory(stagingBuffer));
-	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tPixel Data copied to staging buffer\n");
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Pixel Data copied to staging buffer\n");
 
 	//Free the host-side image data as it's on the device now
 	ImageLoader::Free(imgData.pixels);
@@ -207,7 +207,7 @@ VkImage ImageFactory::AllocateImageImpl(const char* _filepath, const VkImageUsag
 	imgInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imgInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tCreating final destination VkImage", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Creating final destination VkImage", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkImage image;
 	VkResult result{ vkCreateImage(device.GetDevice(), &imgInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &image) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::IMAGE_FACTORY, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
@@ -218,7 +218,7 @@ VkImage ImageFactory::AllocateImageImpl(const char* _filepath, const VkImageUsag
 	}
 
 	//Find a memory type that is DEVICE_LOCAL
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tSearching for compatible memory type for image that is DEVICE_LOCAL", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Searching for compatible memory type for image that is DEVICE_LOCAL", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device.GetDevice(), image, &memRequirements);
 	VkPhysicalDeviceMemoryProperties memProperties;
@@ -244,7 +244,7 @@ VkImage ImageFactory::AllocateImageImpl(const char* _filepath, const VkImageUsag
 	allocInfo.pNext = nullptr;
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = memTypeIndex;
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tAllocating DEVICE_LOCAL memory for image", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Allocating DEVICE_LOCAL memory for image", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	result = vkAllocateMemory(device.GetDevice(), &allocInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &(imageMemoryMap[image]));
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::IMAGE_FACTORY, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
@@ -254,7 +254,7 @@ VkImage ImageFactory::AllocateImageImpl(const char* _filepath, const VkImageUsag
 	}
 	
 	//Bind the allocated memory to the VkImage handle
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tBinding allocated memory to image\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Binding allocated memory to image\n");
 	vkBindImageMemory(device.GetDevice(), image, imageMemoryMap[image], 0);
 
 	
@@ -320,7 +320,7 @@ VkImage ImageFactory::AllocateImageImpl(const char* _filepath, const VkImageUsag
 	commandPool.FreeCommandBuffer(commandBuffer);
 	bufferFactory.FreeBuffer(stagingBuffer);
 
-	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tTexture data successfully transferred to device local memory\n");
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Texture data successfully transferred to device local memory\n");
 
 	return image;
 }
@@ -365,7 +365,7 @@ VkImageView ImageFactory::CreateImageViewImpl(const VkImage& _image, const VkFor
 	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 	viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 	viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tCreating image view", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Creating image view", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkResult result{ vkCreateImageView(device.GetDevice(), &viewInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &imageView) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::IMAGE_FACTORY, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
@@ -394,7 +394,7 @@ void ImageFactory::FreeImageViewImpl(VkImageView& _imageView)
 
 VkSampler ImageFactory::CreateSamplerImpl(const VkSamplerCreateInfo& _createInfo)
 {
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "\tCreating sampler", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::IMAGE_FACTORY, "  Creating sampler", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkSampler sampler;
 	VkResult result{ vkCreateSampler(device.GetDevice(), &_createInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &sampler) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::IMAGE_FACTORY, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);

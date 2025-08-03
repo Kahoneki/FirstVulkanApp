@@ -59,7 +59,7 @@ VulkanCommandPool::~VulkanCommandPool()
 	{
 		vkDestroyCommandPool(device.GetDevice(), pool, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 		pool = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::COMMAND_POOL,"\tCommand Pool (and all allocated command buffers) Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::COMMAND_POOL,"  Command Pool (and all allocated command buffers) Destroyed\n");
 	}
 }
 

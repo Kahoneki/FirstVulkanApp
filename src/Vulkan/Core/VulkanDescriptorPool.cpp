@@ -44,7 +44,7 @@ VulkanDescriptorPool::~VulkanDescriptorPool()
 	{
 		vkDestroyDescriptorPool(device.GetDevice(), pool, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 		pool = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DESCRIPTOR_POOL,"\tDescriptor Pool (and all allocated descriptor sets) Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DESCRIPTOR_POOL,"  Descriptor Pool (and all allocated descriptor sets) Destroyed\n");
 	}
 
 	if (!ownedDescriptorSetLayouts.empty())
@@ -56,7 +56,7 @@ VulkanDescriptorPool::~VulkanDescriptorPool()
 				vkDestroyDescriptorSetLayout(device.GetDevice(), l, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 			}
 		}
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tDescriptor Set Layouts Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DESCRIPTOR_POOL,"  Descriptor Set Layouts Destroyed\n");
 	}
 	ownedDescriptorSetLayouts.clear();
 }

@@ -47,7 +47,7 @@ VulkanRenderManager::VulkanRenderManager(const VKLogger& _logger, VKDebugAllocat
 
 VulkanRenderManager::~VulkanRenderManager()
 {
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::COMMAND_POOL,"Shutting down VulkanRenderManager\n");
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER,"Shutting down VulkanRenderManager\n");
 
 	if (!inFlightFences.empty())
 	{
@@ -58,7 +58,7 @@ VulkanRenderManager::~VulkanRenderManager()
 				vkDestroyFence(device.GetDevice(), f, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 			}
 		}
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tIn-Flight Fences Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  In-Flight Fences Destroyed\n");
 	}
 	inFlightFences.clear();
 	imagesInFlight.clear();
@@ -72,7 +72,7 @@ VulkanRenderManager::~VulkanRenderManager()
 				vkDestroySemaphore(device.GetDevice(), s, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 			}
 		}
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tRender-Finished Semaphores Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Render-Finished Semaphores Destroyed\n");
 	}
 	renderFinishedSemaphores.clear();
 
@@ -85,7 +85,7 @@ VulkanRenderManager::~VulkanRenderManager()
 				vkDestroySemaphore(device.GetDevice(), s, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 			}
 		}
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tImage-Available Semaphores Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Image-Available Semaphores Destroyed\n");
 	}
 	imageAvailableSemaphores.clear();
 	
@@ -95,7 +95,7 @@ VulkanRenderManager::~VulkanRenderManager()
 		{
 			vkDestroyFramebuffer(device.GetDevice(), f, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 		}
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tSwapchain Framebuffers Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Swapchain Framebuffers Destroyed\n");
 	}
 	swapchainFramebuffers.clear();
 	
@@ -105,7 +105,7 @@ VulkanRenderManager::~VulkanRenderManager()
 		{
 			vkDestroyImageView(device.GetDevice(), v, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 		}
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tSwapchain Image Views Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Swapchain Image Views Destroyed\n");
 	}
 	swapchainImageViews.clear();
 
@@ -113,28 +113,28 @@ VulkanRenderManager::~VulkanRenderManager()
 	{
 		vkDestroySwapchainKHR(device.GetDevice(), swapchain, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 		swapchain = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tSwapchain Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Swapchain Destroyed\n");
 	}
 
 	if (renderPass != VK_NULL_HANDLE)
 	{
 		vkDestroyRenderPass(device.GetDevice(), renderPass, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 		renderPass = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tRender Pass Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Render Pass Destroyed\n");
 	}
 
 	if (surface != VK_NULL_HANDLE)
 	{
 		vkDestroySurfaceKHR(device.GetInstance(), surface, nullptr); //GLFW does its own allocations which gets buggy when combined with VkAllocationCallbacks, don't use debug allocator
 		surface = VK_NULL_HANDLE;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tSurface Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Surface Destroyed\n");
 	}
 
 	if (window)
 	{
 		glfwDestroyWindow(window);
 		window = nullptr;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"\tWindow Destroyed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Window Destroyed\n");
 	}
 
 	glfwTerminate();
@@ -380,7 +380,7 @@ void VulkanRenderManager::CreateSwapchain()
 	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER, "Found: " + std::to_string(formatCount) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	for (const VkSurfaceFormatKHR& format : formats)
 	{
-		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "\tFormat: " + std::to_string(format.format) + " (Colour Space: " + std::to_string(format.colorSpace) + ")\n");
+		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "  Format: " + std::to_string(format.format) + " (Colour Space: " + std::to_string(format.colorSpace) + ")\n");
 	}
 
 	//Choose suitable format
@@ -423,11 +423,11 @@ void VulkanRenderManager::CreateSwapchain()
 	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER, "Found: " + std::to_string(presentModeCount) + "\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	for (const VkPresentModeKHR& presentMode : presentModes)
 	{
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER, "\t", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER, "  ", VK_LOGGER_WIDTH::DEFAULT, false);
 		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER, "Present mode: " + std::to_string(presentMode) + " (" + (presentMode == 0 ? "IMMEDIATE)\n" :
 																																				(presentMode == 1 ? "MAILBOX)\n" :
 																																				(presentMode == 2 ? "FIFO)\n" :
-																																				(presentMode == 3 ? "FIFO_RELAXED\n" : ")\n")))), VK_LOGGER_WIDTH::DEFAULT, false);
+																																				(presentMode == 3 ? "FIFO_RELAXED\n" : ")\n")))));
 	}
 	
 	//Choose suitable present mode

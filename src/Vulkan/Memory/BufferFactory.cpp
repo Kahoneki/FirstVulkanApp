@@ -26,7 +26,7 @@ BufferFactory::~BufferFactory()
 		VkBuffer buffer{ bufferMemoryMap.begin()->first };
 		FreeBufferImpl(buffer);
 	}
-	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tAll buffers and underlying memory freed\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::BUFFER_FACTORY, "  All buffers and underlying memory freed\n");
 }
 
 
@@ -89,7 +89,7 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 	bufferInfo.size = _size; //1 MiB
 	bufferInfo.usage = _usage;
 	bufferInfo.sharingMode = _sharingMode;
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tCreating buffer (size: " + GetFormattedSizeString(bufferInfo.size) + ")", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  Creating buffer (size: " + GetFormattedSizeString(bufferInfo.size) + ")", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkResult result{ vkCreateBuffer(device.GetDevice(), &bufferInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &buffer) };
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::BUFFER_FACTORY, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
@@ -101,9 +101,9 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 	//Check memory requirements of buffer
 	VkMemoryRequirements memRequirements;
 	vkGetBufferMemoryRequirements(device.GetDevice(), buffer, &memRequirements);
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tInternal buffer memory requirements:\n");
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\t- " + GetFormattedSizeString(memRequirements.size) + " minimum allocation size\n");
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\t- " + std::to_string(memRequirements.alignment) + "-byte allocation alignment\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  Internal buffer memory requirements:\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  - " + GetFormattedSizeString(memRequirements.size) + " minimum allocation size\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  - " + std::to_string(memRequirements.alignment) + "-byte allocation alignment\n");
 	std::string allowedMemTypeIndicesStr{};
 	bool isFirst{ true };
 	for (std::uint32_t i{ 0 }; i < 32; ++i)
@@ -115,9 +115,9 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 			isFirst = false;
 		}
 	}
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\t- Allocated to memory-type-index in {" + allowedMemTypeIndicesStr + "}\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  - Allocated to memory-type-index in {" + allowedMemTypeIndicesStr + "}\n");
 
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tUser-requested buffer memory requirements:\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  User-requested buffer memory requirements:\n");
 	std::string memTypePropFlagsString;
 	if (_requiredMemFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) { memTypePropFlagsString += "DEVICE_LOCAL | "; }
 	if (_requiredMemFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) { memTypePropFlagsString += "HOST_VISIBLE | "; }
@@ -132,7 +132,7 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 	{
 		memTypePropFlagsString.resize(memTypePropFlagsString.length() - 3);
 	}
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\t- Memory flag bits: " + std::string(memTypePropFlagsString.empty() ? "NONE" : memTypePropFlagsString) + "\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  - Memory flag bits: " + std::string(memTypePropFlagsString.empty() ? "NONE" : memTypePropFlagsString) + "\n");
 
 	//Find a memory type that fits the requirements
 	std::uint32_t memTypeIndex{ UINT32_MAX };
@@ -146,12 +146,12 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 		
 		//This memory type is allowed
 		memTypeIndex = i;
-		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tFound compatible memory type at index " + std::to_string(i) + "\n");
+		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::BUFFER_FACTORY, "  Found compatible memory type at index " + std::to_string(i) + "\n");
 		break;
 	}
 	if (memTypeIndex == UINT32_MAX)
 	{
-		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tNo available memory types were found\n");
+		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::BUFFER_FACTORY, "  No available memory types were found\n");
 		throw std::runtime_error("");
 	}
 
@@ -161,7 +161,7 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 	allocInfo.pNext = nullptr;
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = memTypeIndex;
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tAllocating buffer memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  Allocating buffer memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	result = vkAllocateMemory(device.GetDevice(), &allocInfo, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator), &bufferMemoryMap[buffer]);
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::BUFFER_FACTORY, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
@@ -171,7 +171,7 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 	}
 
 	//Bind the allocated memory region to the buffer
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "\tBinding buffer memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY, "  Binding buffer memory", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	result = vkBindBufferMemory(device.GetDevice(), buffer, bufferMemoryMap[buffer], 0);
 	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::BUFFER_FACTORY, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
