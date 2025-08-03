@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 project(FirstVulkanApp)
 set(CMAKE_CXX_STANDARD 23)
-
 set(PROJECT_OUTPUT_DIR "${CMAKE_BINARY_DIR}")
 
 
@@ -29,28 +28,23 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(stb_image)
 
 
+
+#Add GLM
+FetchContent_Declare(
+        glm
+        GIT_REPOSITORY https://github.com/g-truc/glm.git
+        GIT_TAG 0.9.9.8 #Known stable version
+)
+FetchContent_MakeAvailable(glm)
+
+
 #Find all .cpp and .h files recursively (including those in /out/)
 file(GLOB_RECURSE ALL_PROJECT_FILES
     "${CMAKE_SOURCE_DIR}/src/*.h"
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
 )
 
-#Remove stb_image.cpp so as to not double-compile it (compiled further down)
-#list(REMOVE_ITEM ALL_PROJECT_FILES ${CMAKE_SOURCE_DIR}/src/External/stb_image.cpp)
 
-
-#----NO LONGER USED - SOURCE FILES ARE NOW LOCATED IN /src/ SUBDIRECTORY----#
-##Create an empty list to store the clean source files (those not in the /out/ directory)
-#set(CLEAN_SOURCE_FILES "")
-#
-##Loop through every file path that the glob found and check if in the project output dir (/out/)
-#foreach(FILE_PATH ${ALL_PROJECT_FILES})
-#    string(FIND "${FILE_PATH}" "${PROJECT_OUTPUT_DIR}" IS_IN_PROJECT_OUTPUT_DIR) #returns 0 if substring is found, otherwise returns -1
-#    if(IS_IN_PROJECT_OUTPUT_DIR EQUAL -1)
-#        #File not in output dir, add to CLEAN_SOURCE_FILES
-#        list(APPEND CLEAN_SOURCE_FILES ${FILE_PATH})
-#    endif()
-#endforeach()
 
 #Output all the clean source files to be able to check that cleansing worked as expected
 message(STATUS "--- Final Filtered Source Files --- dir: ${PROJECT_OUTPUT_DIR}")
@@ -64,9 +58,14 @@ add_executable(FirstVulkanApp ${ALL_PROJECT_FILES})
 
 
 #Link Vulkan, GLFW, and stb_image
-target_include_directories(FirstVulkanApp PRIVATE ${stb_image_SOURCE_DIR})
+target_include_directories(FirstVulkanApp PRIVATE ${stb_image_SOURCE_DIR} ${glm_SOURCE_DIR})
 find_package(Vulkan REQUIRED)
 target_link_libraries(FirstVulkanApp PRIVATE Vulkan::Vulkan glfw)
+
+
+
+
+
 
 
 #Shader compilation
@@ -112,6 +111,11 @@ add_custom_target(
     DEPENDS ${SPIRV_OUTPUTS}
 )
 add_dependencies(FirstVulkanApp Shaders)
+
+
+
+
+
 
 
 

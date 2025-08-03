@@ -1,5 +1,6 @@
 #include <vulkan/vulkan.h>
-#include <iostream>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
@@ -34,6 +35,7 @@ VKApp::VKApp(VkExtent2D _windowSize,
 	  imageFactory(std::make_unique<ImageFactory>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *bufferFactory))
 {
 	vertexBuffer = VK_NULL_HANDLE;
+	indexBuffer = VK_NULL_HANDLE;
 	ubo = VK_NULL_HANDLE;
 	image = VK_NULL_HANDLE;
 	imageView = VK_NULL_HANDLE;
@@ -164,9 +166,12 @@ void VKApp::InitialiseIndexBuffer()
 
 void VKApp::InitialiseUBO()
 {
-	//Define colour data
-	constexpr float colour[] { 1.0f, 1.0f, 1.0f, 1.0f };
-	constexpr VkDeviceSize bufferSize{ 4 * sizeof(float) };
+	//Define cube data
+	cubeData.model = glm::mat4(1.0f);
+	cubeData.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	const float aspectRatio{ static_cast<float>(vulkanRenderManager->GetSwapchainExtent().width) / static_cast<float>(vulkanRenderManager->GetSwapchainExtent().height) };
+	cubeData.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
+	constexpr VkDeviceSize bufferSize{ sizeof(UBOData) };
 	
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating UBO\n");
@@ -188,7 +193,7 @@ void VKApp::InitialiseUBO()
 	}
 
 	//Write to buffer
-	memcpy(uboMap, colour, static_cast<std::size_t>(bufferSize));
+	memcpy(uboMap, &cubeData, static_cast<std::size_t>(bufferSize));
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "  UBO memory filled with colour\n");
 }
 
@@ -249,7 +254,7 @@ void VKApp::CreateDescriptorSet()
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	uboLayoutBinding.pImmutableSamplers = nullptr;
 
 	//Define descriptor binding 1 as an image sampler accessible from the fragment shader
@@ -370,33 +375,10 @@ void VKApp::CreatePipeline()
 
 
 
-void VKApp::UpdateVertexBuffer()
-{
-	//Rotate the vertices
-	float* vertexPositions{ static_cast<float*>(vertexBufferMap) };
-	constexpr float speed{ 0.0005f }; //yes this is janky
-	for (std::size_t i{ 0 }; i<16; i+=4)
-	{
-		float* x{ &(vertexPositions[i]) };
-		float* y{ &(vertexPositions[i+1]) };
-		float newX{ *x * std::cos(speed) - *y * std::sin(speed) };
-		float newY{ *x * std::sin(speed) + *y * std::cos(speed) };
-		*x = newX;
-		*y = newY;
-	}
-}
-
-
-
 void VKApp::UpdateUBO()
 {
-	//Make the colour pulse in a sine wave
-	const double time{ glfwGetTime() };
-	float* colour{ static_cast<float*>(uboMap) };
-	constexpr float speed{ 1.0f }; //yes this is janky
-	colour[0] = (std::sin(time * speed) + 1.0f) / 2.0f;
-	colour[1] = (std::cos(time * speed) + 1.0f) / 2.0f;
-	colour[2] = 0.5f;
+	cubeData.model = glm::rotate(cubeData.model, glm::radians(0.01f), glm::vec3(1,0,0));
+	memcpy(uboMap, &cubeData, sizeof(UBOData));
 }
 
 
@@ -410,7 +392,6 @@ void VKApp::DrawFrame()
 	
 	vulkanRenderManager->StartFrame(clearValue);
 
-	UpdateVertexBuffer();
 	UpdateUBO();
 	
 	vkCmdBindPipeline(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipeline());

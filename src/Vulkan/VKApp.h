@@ -6,6 +6,8 @@
 #include <memory>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
 
 #include "Core/VulkanDevice.h"
 #include "Core/VulkanCommandPool.h"
@@ -21,6 +23,13 @@
 
 namespace Neki
 {
+
+struct UBOData
+{
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 proj;
+};
 
 class VKApp final
 {
@@ -68,7 +77,6 @@ private:
 
 	//Per-frame functions
 	void UpdateUBO();
-	void UpdateVertexBuffer();
 	void DrawFrame();
 	
 	//Raw vulkan resources
@@ -84,6 +92,8 @@ private:
 	//Persistent buffer maps
 	void* vertexBufferMap;
 	void* uboMap;
+
+	UBOData cubeData;
 };
 
 }

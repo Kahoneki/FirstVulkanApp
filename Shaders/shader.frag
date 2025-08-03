@@ -1,15 +1,12 @@
 #version 450
 
 layout(location = 0) in vec2 TexCoord;
-layout(set = 0, binding = 0) uniform DataBuffer
-{
-	vec4 colour;
-} dataBuffer;
+
 layout(set = 0, binding = 1) uniform sampler2D texSampler;
 
 layout(location = 0) out vec4 outColour;
 
 void main()
 {
-	outColour = texture(texSampler, TexCoord) * dataBuffer.colour;
+	outColour = texture(texSampler, TexCoord);
 }
