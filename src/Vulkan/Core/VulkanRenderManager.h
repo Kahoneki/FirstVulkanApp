@@ -54,6 +54,7 @@ public:
 	[[nodiscard]] VkCommandBuffer GetCurrentCommandBuffer();
 	[[nodiscard]] VkExtent2D GetSwapchainExtent();
 	[[nodiscard]] VkRenderPass GetRenderPass();
+	[[nodiscard]] GLFWwindow* GetWindow();
 	[[nodiscard]] bool WindowShouldClose() const;
 
 	

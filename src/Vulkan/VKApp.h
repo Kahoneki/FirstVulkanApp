@@ -2,13 +2,13 @@
 #define VKAPP_H
 
 #include <vulkan/vulkan.h>
-#include <vector>
 #include <memory>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
+#include "../Camera/PlayerCamera.h"
 #include "Core/VulkanDevice.h"
 #include "Core/VulkanCommandPool.h"
 #include "Core/VulkanRenderManager.h"
@@ -92,8 +92,8 @@ private:
 	void CreatePipeline();
 
 	//Per-frame functions
-	void UpdateUBO();
-	void DrawFrame();
+	void UpdateUBO(PlayerCamera& _playerCamera);
+	void DrawFrame(PlayerCamera& _playerCamera);
 	
 	//Raw vulkan resources
 	VkBuffer vertexBuffer;
@@ -116,4 +116,4 @@ private:
 }
 
 
-#endif //VKAPP_H
+#endif

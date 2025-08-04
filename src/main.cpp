@@ -16,7 +16,7 @@ void AppTest()
 	VkDescriptorPoolSize descriptorPoolSizes[]{ {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} };
 	
 	Neki::VKAppCreationDescription creationDescription{};
-	creationDescription.windowSize = {800, 800};
+	creationDescription.windowSize = {1280, 720};
 	creationDescription.renderPassDesc = nullptr;
 	creationDescription.descriptorPoolSizeCount = 2;
 	creationDescription.descriptorPoolSizes = descriptorPoolSizes;

@@ -322,6 +322,13 @@ VkRenderPass VulkanRenderManager::GetRenderPass()
 
 
 
+GLFWwindow* VulkanRenderManager::GetWindow()
+{
+	return window;
+}
+
+
+
 bool VulkanRenderManager::WindowShouldClose() const
 {
 	return glfwWindowShouldClose(window);

@@ -189,6 +189,7 @@ void VKApp::InitialiseIndexBuffer()
 
 void VKApp::InitialiseUBO()
 {
+	//Arbitrary camera data
 	cameraData.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	const float aspectRatio{ static_cast<float>(vulkanRenderManager->GetSwapchainExtent().width) / static_cast<float>(vulkanRenderManager->GetSwapchainExtent().height) };
 	cameraData.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
@@ -214,7 +215,7 @@ void VKApp::InitialiseUBO()
 
 	//Write to buffer
 	memcpy(uboMap, &cameraData, static_cast<std::size_t>(bufferSize));
-	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "  UBO memory filled with colour\n");
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "  UBO memory initialised with arbitrary camera data\n");
 }
 
 
@@ -401,13 +402,18 @@ void VKApp::CreatePipeline()
 
 
 
-void VKApp::UpdateUBO()
+void VKApp::UpdateUBO(PlayerCamera& _playerCamera)
 {
+	cameraData.view = _playerCamera.GetViewMatrix();
+	cameraData.proj = _playerCamera.GetProjectionMatrix();
+
+	//Write to buffer
+	memcpy(uboMap, &cameraData, sizeof(UBOData));
 }
 
 
 
-void VKApp::DrawFrame()
+void VKApp::DrawFrame(PlayerCamera& _playerCamera)
 {
 
 	//Define the clear colour
@@ -417,7 +423,7 @@ void VKApp::DrawFrame()
 	
 	vulkanRenderManager->StartFrame(2, clearValues);
 
-	UpdateUBO();
+	UpdateUBO(_playerCamera);
 	
 	vkCmdBindPipeline(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipeline());
 	constexpr VkDeviceSize zeroOffset{ 0 };
