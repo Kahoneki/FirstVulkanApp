@@ -418,7 +418,7 @@ void VKApp::DrawFrame(PlayerCamera& _playerCamera)
 
 	//Define the clear colour
 	VkClearValue clearValues[2];
-	clearValues[0].color = {0.0f, 1.0f, 0.0f, 0.0f};
+	clearValues[0].color = {0.9f, 0.5f, 0.5f, 0.0f};
 	clearValues[1].depthStencil = { 1.0f, 0 };
 	
 	vulkanRenderManager->StartFrame(2, clearValues);
@@ -433,6 +433,7 @@ void VKApp::DrawFrame(PlayerCamera& _playerCamera)
 
 	//Update cube data
 	float speed{ 50.0f };
+	cubeModelMatrix = glm::translate(cubeModelMatrix, glm::vec3(-3, 0, 0));
 	cubeModelMatrix = glm::rotate(cubeModelMatrix, glm::radians(speed * static_cast<float>(TimeManager::dt)), glm::vec3(1,0,0));
 	vkCmdPushConstants(vulkanRenderManager->GetCurrentCommandBuffer(), vulkanGraphicsPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &cubeModelMatrix);
 	
@@ -451,6 +452,12 @@ void VKApp::DrawFrame(PlayerCamera& _playerCamera)
 	scissor.offset = {0,0};
 	scissor.extent = vulkanRenderManager->GetSwapchainExtent();
 	vkCmdSetScissor(vulkanRenderManager->GetCurrentCommandBuffer(), 0, 1, &scissor);
+	
+	//Draw the damn cube
+	vkCmdDrawIndexed(vulkanRenderManager->GetCurrentCommandBuffer(), 36, 1, 0, 0, 0);
+
+	cubeModelMatrix = glm::translate(cubeModelMatrix, glm::vec3(3, 0, 0));
+	vkCmdPushConstants(vulkanRenderManager->GetCurrentCommandBuffer(), vulkanGraphicsPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &cubeModelMatrix);
 	
 	//Draw the damn cube
 	vkCmdDrawIndexed(vulkanRenderManager->GetCurrentCommandBuffer(), 36, 1, 0, 0, 0);
