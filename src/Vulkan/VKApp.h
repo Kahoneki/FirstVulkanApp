@@ -39,7 +39,7 @@ struct Vertex
 struct VKAppCreationDescription
 {
 	VkExtent2D windowSize;
-	VkRenderPassCreateInfo* renderPassDesc;
+	VKRenderPassCleanDesc renderPassDesc;
 	std::uint32_t descriptorPoolSizeCount;
 	VkDescriptorPoolSize* descriptorPoolSizes;
 	std::uint32_t apiVer;

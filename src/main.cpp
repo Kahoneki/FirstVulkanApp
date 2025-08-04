@@ -15,9 +15,23 @@ void AppTest()
 
 	VkDescriptorPoolSize descriptorPoolSizes[]{ {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} };
 	
+	VkAttachmentDescription attachments[]
+	{
+		Neki::VulkanRenderManager::GetDefaultColourAttachmentDescription(),
+		Neki::VulkanRenderManager::GetDefaultDepthAttachmentDescription()
+	};
+	VkAttachmentReference colourAttachmentRef{ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+	VkAttachmentReference depthAttachmentRef{ 1, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL };
+	VkSubpassDescription subpass{ Neki::VulkanRenderManager::GetDefaultSubpassDescription(1, &colourAttachmentRef, &depthAttachmentRef) };
+	Neki::VKRenderPassCleanDesc renderPassDesc{};
+	renderPassDesc.attachmentCount = 2;
+	renderPassDesc.attachments = attachments;
+	renderPassDesc.subpassCount = 1;
+	renderPassDesc.subpasses = &subpass;
+	
 	Neki::VKAppCreationDescription creationDescription{};
 	creationDescription.windowSize = {1280, 720};
-	creationDescription.renderPassDesc = nullptr;
+	creationDescription.renderPassDesc = renderPassDesc;
 	creationDescription.descriptorPoolSizeCount = 2;
 	creationDescription.descriptorPoolSizes = descriptorPoolSizes;
 	creationDescription.apiVer = VK_MAKE_API_VERSION(0, 1, 4, 0);

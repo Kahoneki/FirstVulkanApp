@@ -12,31 +12,18 @@
 namespace Neki
 {
 
-//For internal use only
-struct DefaultRenderPassDescription
+struct VKRenderPassCleanDesc final
 {
-	friend class VulkanRenderManager;
+	std::uint32_t attachmentCount;
+	VkAttachmentDescription* attachments;
 
-public:
-	VkRenderPassCreateInfo createInfo{};
-
-	
-private:
-	VkAttachmentDescription colourAttachment{};
-	VkAttachmentReference colourAttachmentRef{};
-
-	VkAttachmentDescription depthAttachment{};
-	VkAttachmentReference depthAttachmentRef{};
-	
-	VkSubpassDescription subpass{};
-	std::vector<VkAttachmentDescription> attachmentDescriptions; //Will be populated by colourAttachment and depthAttachment
+	std::uint32_t subpassCount;
+	VkSubpassDescription* subpasses;
 };
 
 class VulkanRenderManager
 {
 public:
-	//_renderPassDesc should, if provided, be fully filled out. To use the swapchain image or depth formats for attachments, set format to VkFormat::VK_FORMAT_UNDEFINED and it will be replaced
-	//Alternatively, leave _renderPassDesc as nullptr to use a default render pass
 	explicit VulkanRenderManager(const VKLogger& _logger,
 							 VKDebugAllocator& _deviceDebugAllocator,
 							 const VulkanDevice& _device,
@@ -44,9 +31,14 @@ public:
 							 ImageFactory& _imageFactory,
 							 VkExtent2D _windowSize,
 							 std::size_t _framesInFlight,
-							 VkRenderPassCreateInfo* _renderPassDesc=nullptr);
+							 VKRenderPassCleanDesc _renderPassDesc);
 
 	~VulkanRenderManager();
+
+	//Descriptions for a single-subpass render pass
+	[[nodiscard]] static VkAttachmentDescription GetDefaultColourAttachmentDescription();
+	[[nodiscard]] static VkAttachmentDescription GetDefaultDepthAttachmentDescription();
+	[[nodiscard]] static VkSubpassDescription GetDefaultSubpassDescription(std::uint32_t _colourAttachmentCount, VkAttachmentReference* _colourAttachments, VkAttachmentReference* _depthStencilAttachment);
 	
 	void StartFrame(std::uint32_t _clearValueCount, const VkClearValue* _clearValues);
 	void SubmitAndPresent();
