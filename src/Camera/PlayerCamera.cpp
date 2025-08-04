@@ -1,7 +1,4 @@
 #include "PlayerCamera.h"
-
-#include "../../../../../../usr/include/c++/15.1.1/iostream"
-#include "../../cmake-build-debug/_deps/glm-src/glm/gtx/string_cast.hpp"
 #include "../Managers/InputManager.h"
 #include "../Managers/TimeManager.h"
 
@@ -31,7 +28,6 @@ void PlayerCamera::Update()
 	{
 		pos += glm::normalize(movementDirection) * speed;
 	}
-	std::cout << glm::to_string(pos) << '\n';
 
 	
 	// //Process mouse movement
