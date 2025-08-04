@@ -42,6 +42,10 @@ VKApp::VKApp(VkExtent2D _windowSize,
 	descriptorSetLayout = VK_NULL_HANDLE;
 	descriptorSet = VK_NULL_HANDLE;
 
+	//Define cube data
+	cubeModelMatrix = glm::mat4(1.0f);
+	cubeModelMatrix = glm::rotate(cubeModelMatrix, glm::radians(45.0f), glm::vec3(0, 1, 0));
+	
 	InitialiseVertexBuffer();
 	InitialiseIndexBuffer();
 	InitialiseUBO();
@@ -208,19 +212,15 @@ void VKApp::InitialiseIndexBuffer()
 
 void VKApp::InitialiseUBO()
 {
-	//Define cube data
-	cubeData.model = glm::mat4(1.0f);
-	cubeData.model = glm::rotate(cubeData.model, glm::radians(45.0f), glm::vec3(0, 1, 0));
-	cubeData.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	cameraData.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	const float aspectRatio{ static_cast<float>(vulkanRenderManager->GetSwapchainExtent().width) / static_cast<float>(vulkanRenderManager->GetSwapchainExtent().height) };
-	cubeData.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
+	cameraData.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
 	constexpr VkDeviceSize bufferSize{ sizeof(UBOData) };
 	
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating UBO\n");
 	ubo = bufferFactory->AllocateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating UBO\n");
 
 	//Map buffer memory
@@ -236,7 +236,7 @@ void VKApp::InitialiseUBO()
 	}
 
 	//Write to buffer
-	memcpy(uboMap, &cubeData, static_cast<std::size_t>(bufferSize));
+	memcpy(uboMap, &cameraData, static_cast<std::size_t>(bufferSize));
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "  UBO memory filled with colour\n");
 }
 
@@ -412,16 +412,20 @@ void VKApp::CreatePipeline()
 	
 	piplDesc.vertexAttributeDescriptionCount = 2;
 	piplDesc.pVertexAttributeDescriptions = attribDescs;
+
+	//Push constant for storing the model matrix
+	VkPushConstantRange pushConstantRange{};
+	pushConstantRange.size = sizeof(glm::mat4);
+	pushConstantRange.offset = 0;
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	
-	vulkanGraphicsPipeline = std::make_unique<VulkanGraphicsPipeline>(logger, deviceDebugAllocator, *vulkanDevice, &piplDesc, "shader.vert", "shader.frag", nullptr, nullptr, 1, &descriptorSetLayout);
+	vulkanGraphicsPipeline = std::make_unique<VulkanGraphicsPipeline>(logger, deviceDebugAllocator, *vulkanDevice, &piplDesc, "shader.vert", "shader.frag", nullptr, nullptr, 1, &descriptorSetLayout, 1, &pushConstantRange);
 }
 
 
 
 void VKApp::UpdateUBO()
 {
-	cubeData.model = glm::rotate(cubeData.model, glm::radians(0.01f), glm::vec3(1,0,0));
-	memcpy(uboMap, &cubeData, sizeof(UBOData));
 }
 
 
@@ -443,6 +447,10 @@ void VKApp::DrawFrame()
 	vkCmdBindVertexBuffers(vulkanRenderManager->GetCurrentCommandBuffer(), 0, 1, &vertexBuffer, &zeroOffset);
 	vkCmdBindIndexBuffer(vulkanRenderManager->GetCurrentCommandBuffer(), indexBuffer, zeroOffset, VK_INDEX_TYPE_UINT16);
 	vkCmdBindDescriptorSets(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, nullptr);
+
+	//Update cube data
+	cubeModelMatrix = glm::rotate(cubeModelMatrix, glm::radians(0.01f), glm::vec3(1,0,0));
+	vkCmdPushConstants(vulkanRenderManager->GetCurrentCommandBuffer(), vulkanGraphicsPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &cubeModelMatrix);
 	
 	//Define viewport
 	VkViewport viewport{};

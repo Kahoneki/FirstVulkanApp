@@ -26,7 +26,6 @@ namespace Neki
 
 struct UBOData
 {
-	glm::mat4 model;
 	glm::mat4 view;
 	glm::mat4 proj;
 };
@@ -99,7 +98,8 @@ private:
 	void* vertexBufferMap;
 	void* uboMap;
 
-	UBOData cubeData;
+	glm::mat4 cubeModelMatrix;
+	UBOData cameraData;
 };
 
 }
