@@ -59,10 +59,10 @@ private:
 	//Sub-classes
 	std::unique_ptr<VulkanDevice> vulkanDevice;
 	std::unique_ptr<VulkanCommandPool> vulkanCommandPool;
-	std::unique_ptr<VulkanRenderManager> vulkanRenderManager;
 	std::unique_ptr<VulkanDescriptorPool> vulkanDescriptorPool;
 	std::unique_ptr<BufferFactory> bufferFactory;
 	std::unique_ptr<ImageFactory> imageFactory;
+	std::unique_ptr<VulkanRenderManager> vulkanRenderManager;
 	std::unique_ptr<VulkanGraphicsPipeline> vulkanGraphicsPipeline;
 
 	//Init sub-functions

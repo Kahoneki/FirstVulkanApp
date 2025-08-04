@@ -29,10 +29,10 @@ VKApp::VKApp(VkExtent2D _windowSize,
 	: logger(_loggerConfig), instDebugAllocator(_allocatorType), deviceDebugAllocator(_allocatorType),
 	  vulkanDevice(std::make_unique<VulkanDevice>(logger, instDebugAllocator, deviceDebugAllocator, _apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions)),
 	  vulkanCommandPool(std::make_unique<VulkanCommandPool>(logger, deviceDebugAllocator, *vulkanDevice, VK_COMMAND_POOL_TYPE::GRAPHICS)),
-	  vulkanRenderManager(std::make_unique<VulkanRenderManager>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, _windowSize, 3, _renderPassDesc)),
 	  vulkanDescriptorPool(std::make_unique<VulkanDescriptorPool>(logger, deviceDebugAllocator, *vulkanDevice, _descriptorPoolSizeCount, _descriptorPoolSizes)),
 	  bufferFactory(std::make_unique<BufferFactory>(logger, deviceDebugAllocator, *vulkanDevice)),
-	  imageFactory(std::make_unique<ImageFactory>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *bufferFactory))
+	  imageFactory(std::make_unique<ImageFactory>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *bufferFactory)),
+	  vulkanRenderManager(std::make_unique<VulkanRenderManager>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *imageFactory, _windowSize, 3, _renderPassDesc))
 {
 	vertexBuffer = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
@@ -87,13 +87,43 @@ void VKApp::Run()
 void VKApp::InitialiseVertexBuffer()
 {
 	//Define quad vertex buffer data
-	constexpr float vertices[]
-	{
-		//Position		//UVs
-		-0.5f,  0.5f,	0.0f, 0.0f,		//Bottom left
-		-0.5f, -0.5f,	0.0f, 1.0f,		//Top left
-		 0.5f,  0.5f,	1.0f, 0.0f,		//Bottom right
-		 0.5f, -0.5f,   1.0f, 1.0f,		//Top right
+	const float vertices[] = {
+		//POSITION			  UV
+		//Back face (-Z)
+		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+
+		//Front face (+Z)
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+
+		//Left face (-X)
+		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+		//Right face (+X)
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+		//Bottom face (-Y)
+		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+		//Top face (+Y)
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f
 	};
 	constexpr VkDeviceSize bufferSize{ std::size(vertices) * sizeof(vertices[0]) };
 	
@@ -126,10 +156,19 @@ void VKApp::InitialiseVertexBuffer()
 void VKApp::InitialiseIndexBuffer()
 {
 	//Define quad index buffer data (clockwise)
-	constexpr std::uint16_t indices[]
-	{
-		0, 1, 2,
-		2, 1, 3
+	const std::uint16_t indices[] = {
+		//Back face
+		0, 1, 2, 0, 3, 1,
+		//Front face
+		4, 5, 6, 4, 6, 7,
+		//Left face
+		8, 9, 10, 8, 10, 11,
+		//Right face
+		12, 13, 14, 12, 15, 13,
+		//Bottom face
+		16, 17, 18, 16, 18, 19,
+		//Top face
+		20, 21, 22, 20, 23, 21
 	};
 	constexpr VkDeviceSize bufferSize{ std::size(indices) * sizeof(indices[0]) };
 	
@@ -168,6 +207,7 @@ void VKApp::InitialiseUBO()
 {
 	//Define cube data
 	cubeData.model = glm::mat4(1.0f);
+	cubeData.model = glm::rotate(cubeData.model, glm::radians(45.0f), glm::vec3(0, 1, 0));
 	cubeData.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	const float aspectRatio{ static_cast<float>(vulkanRenderManager->GetSwapchainExtent().width) / static_cast<float>(vulkanRenderManager->GetSwapchainExtent().height) };
 	cubeData.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
@@ -238,7 +278,7 @@ void VKApp::InitialiseImage()
 	image = imageFactory->AllocateImage("Resource Files/garfield.png", VK_IMAGE_USAGE_SAMPLED_BIT);
 
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "  Creating image view\n");
-	imageView = imageFactory->CreateImageView(image, VK_FORMAT_R8G8B8A8_SRGB);
+	imageView = imageFactory->CreateImageView(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 
@@ -348,7 +388,7 @@ void VKApp::CreatePipeline()
 
 	VkVertexInputBindingDescription vertInputBindingDesc{};
 	vertInputBindingDesc.binding = 0;
-	vertInputBindingDesc.stride = 4 * sizeof(float);
+	vertInputBindingDesc.stride = 5 * sizeof(float);
 	vertInputBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	piplDesc.vertexBindingDescriptionCount = 1;
 	piplDesc.pVertexBindingDescriptions = &vertInputBindingDesc;
@@ -356,14 +396,14 @@ void VKApp::CreatePipeline()
 	VkVertexInputAttributeDescription posAttribDesc{};
 	posAttribDesc.binding = 0;
 	posAttribDesc.location = 0;
-	posAttribDesc.format = VK_FORMAT_R32G32_SFLOAT;
+	posAttribDesc.format = VK_FORMAT_R32G32B32_SFLOAT;
 	posAttribDesc.offset = 0;
 
 	VkVertexInputAttributeDescription uvAttribDesc{};
 	uvAttribDesc.binding = 0;
 	uvAttribDesc.location = 1;
 	uvAttribDesc.format = VK_FORMAT_R32G32_SFLOAT;
-	uvAttribDesc.offset = 2 * sizeof(float);
+	uvAttribDesc.offset = 3 * sizeof(float);
 
 	VkVertexInputAttributeDescription attribDescs[]{ posAttribDesc, uvAttribDesc };
 	
@@ -387,10 +427,11 @@ void VKApp::DrawFrame()
 {
 
 	//Define the clear colour
-	VkClearValue clearValue{};
-	clearValue.color = {0.0f, 1.0f, 0.0f, 0.0f};
+	VkClearValue clearValues[2];
+	clearValues[0].color = {0.0f, 1.0f, 0.0f, 0.0f};
+	clearValues[1].depthStencil = { 1.0f, 0 };
 	
-	vulkanRenderManager->StartFrame(clearValue);
+	vulkanRenderManager->StartFrame(2, clearValues);
 
 	UpdateUBO();
 	
@@ -417,7 +458,7 @@ void VKApp::DrawFrame()
 	vkCmdSetScissor(vulkanRenderManager->GetCurrentCommandBuffer(), 0, 1, &scissor);
 	
 	//Draw the damn triangle
-	vkCmdDrawIndexed(vulkanRenderManager->GetCurrentCommandBuffer(), 6, 1, 0, 0, 0);
+	vkCmdDrawIndexed(vulkanRenderManager->GetCurrentCommandBuffer(), 36, 1, 0, 0, 0);
 
 	vulkanRenderManager->SubmitAndPresent();
 }

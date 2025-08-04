@@ -38,7 +38,7 @@ struct VKGraphicsPipelineCleanDesc final : VKPipelineCleanDesc
 	VkBool32 rasteriserDiscardEnable{ VK_FALSE };
 	VkPolygonMode polygonMode{ VK_POLYGON_MODE_FILL };
 	float lineWidth{ 1.0f };
-	VkCullModeFlags cullMode{ VK_CULL_MODE_NONE };
+	VkCullModeFlags cullMode{ VK_CULL_MODE_BACK_BIT };
 	VkFrontFace frontFace{ VK_FRONT_FACE_CLOCKWISE };
 	VkBool32 depthBiasEnable{ VK_FALSE };
 	float depthBiasConstantFactor{ 0.0f };
@@ -53,6 +53,17 @@ struct VKGraphicsPipelineCleanDesc final : VKPipelineCleanDesc
 	VkBool32 alphaToCoverageEnable{ VK_FALSE };
 	VkBool32 alphaToOneEnable{ VK_FALSE };
 
+	//Depth and stencil state
+	VkBool32 depthTestEnable{ VK_TRUE };
+	VkBool32 depthWriteEnable{ VK_TRUE };
+	VkCompareOp depthCompareOp{ VK_COMPARE_OP_LESS };
+	VkBool32 depthBoundsTestEnable{ VK_FALSE };
+	VkBool32 stencilTestEnable{ VK_FALSE };
+	VkStencilOpState front{};
+	VkStencilOpState back{};
+	float minDepthBounds{ 0.0f };
+	float maxDepthBounds{ 1.0f };
+	
 	//Colour blend attachment (leave empty if providing your own)
 	VkColorComponentFlags colourWriteMask{ VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT };
 	VkBool32 blendEnable{ VK_FALSE };

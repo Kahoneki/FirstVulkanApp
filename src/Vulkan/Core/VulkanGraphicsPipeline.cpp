@@ -223,6 +223,21 @@ void VulkanGraphicsPipeline::CreatePipeline(const VKPipelineCleanDesc *_desc)
 	multisampling.alphaToCoverageEnable = desc->alphaToCoverageEnable;
 	multisampling.alphaToOneEnable = desc->alphaToOneEnable;
 
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::PIPELINE, "Defining depth-stencil state\n");
+	VkPipelineDepthStencilStateCreateInfo depthStencil{};
+	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencil.pNext = nullptr;
+	depthStencil.flags = 0;
+	depthStencil.depthTestEnable = desc->depthTestEnable;
+	depthStencil.depthWriteEnable = desc->depthWriteEnable;
+	depthStencil.depthCompareOp = desc->depthCompareOp;
+	depthStencil.depthBoundsTestEnable = desc->depthBoundsTestEnable;
+	depthStencil.stencilTestEnable = desc->stencilTestEnable;
+	depthStencil.front = desc->front;
+	depthStencil.back = desc->back;
+	depthStencil.minDepthBounds = desc->minDepthBounds;
+	depthStencil.maxDepthBounds = desc->maxDepthBounds;
+	
 	//Define colour blend attachment if desc->pAttachments == nullptr
 	VkPipelineColorBlendAttachmentState colourBlendAttachment{};
 	if (desc->pAttachments == nullptr)
@@ -266,7 +281,7 @@ void VulkanGraphicsPipeline::CreatePipeline(const VKPipelineCleanDesc *_desc)
 	pipelineInfo.pViewportState = &viewportState;
 	pipelineInfo.pRasterizationState = &rasteriser;
 	pipelineInfo.pMultisampleState = &multisampling;
-	pipelineInfo.pDepthStencilState = nullptr;
+	pipelineInfo.pDepthStencilState = &depthStencil;
 	pipelineInfo.pColorBlendState = &colourBlending;
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = layout;

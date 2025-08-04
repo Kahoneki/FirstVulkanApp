@@ -10,14 +10,16 @@ namespace Neki
 
 
 
-VulkanRenderManager::VulkanRenderManager(const VKLogger& _logger, VKDebugAllocator& _deviceDebugAllocator, const VulkanDevice& _device, VulkanCommandPool& _commandPool, VkExtent2D _windowSize, std::size_t _framesInFlight, VkRenderPassCreateInfo& _renderPassDesc)
-										 : logger(_logger), deviceDebugAllocator(_deviceDebugAllocator), device(_device), commandPool(_commandPool)
+VulkanRenderManager::VulkanRenderManager(const VKLogger& _logger, VKDebugAllocator& _deviceDebugAllocator, const VulkanDevice& _device, VulkanCommandPool& _commandPool, ImageFactory& _imageFactory, VkExtent2D _windowSize, std::size_t _framesInFlight, VkRenderPassCreateInfo& _renderPassDesc)
+										: logger(_logger), deviceDebugAllocator(_deviceDebugAllocator), device(_device), commandPool(_commandPool), imageFactory(_imageFactory)
 {
 	windowSize = _windowSize;
 	window = nullptr;
 	surface = VK_NULL_HANDLE;
 	swapchain = VK_NULL_HANDLE;
 	swapchainImageFormat = VkFormat::VK_FORMAT_UNDEFINED;
+	depthTexture = VK_NULL_HANDLE;
+	depthTextureView = VK_NULL_HANDLE;
 	renderPass = VK_NULL_HANDLE;
 	framesInFlight = _framesInFlight;
 	imageIndex = 0;
@@ -38,6 +40,7 @@ VulkanRenderManager::VulkanRenderManager(const VKLogger& _logger, VKDebugAllocat
 	AllocateCommandBuffers();
 	CreateSwapchain();
 	CreateSwapchainImageViews();
+	InitialiseDepthTexture();
 	CreateRenderPass(_renderPassDesc);
 	CreateSwapchainFramebuffers();
 	CreateSyncObjects();
@@ -142,7 +145,7 @@ VulkanRenderManager::~VulkanRenderManager()
 
 
 
-void VulkanRenderManager::StartFrame(const VkClearValue &_clearValue)
+void VulkanRenderManager::StartFrame(std::uint32_t _clearValueCount, const VkClearValue* _clearValues)
 {
 	//Wait for previous frame of this frame index to finish before overwriting resources
 	vkWaitForFences(device.GetDevice(), 1, &(inFlightFences[currentFrame]), VK_TRUE, UINT64_MAX);
@@ -184,8 +187,8 @@ void VulkanRenderManager::StartFrame(const VkClearValue &_clearValue)
 	renderPassInfo.framebuffer = swapchainFramebuffers[imageIndex];
 	renderPassInfo.renderArea.offset = {0, 0};
 	renderPassInfo.renderArea.extent = swapchainExtent;
-	renderPassInfo.clearValueCount = 1;
-	renderPassInfo.pClearValues = &_clearValue;
+	renderPassInfo.clearValueCount = _clearValueCount;
+	renderPassInfo.pClearValues = _clearValues;
 
 	
 	vkCmdBeginRenderPass(commandBuffers[currentFrame], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -277,35 +280,50 @@ DefaultRenderPassDescription VulkanRenderManager::GetDefaultRenderPassCreateInfo
 {
 	DefaultRenderPassDescription desc;
 	
-	//Define attachment description
-	desc.attachment.flags = 0;
-	desc.attachment.format = VkFormat::VK_FORMAT_UNDEFINED;
-	desc.attachment.samples = VK_SAMPLE_COUNT_1_BIT; //No MSAA
-	desc.attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	desc.attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	desc.attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; //Colour attachment - no stencil
-	desc.attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Colour attachment - no stencil
-	desc.attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	desc.attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; //Layout to transition state after pass is done (for presentation)
+	//Define colour attachment description
+	desc.colourAttachment.flags = 0;
+	desc.colourAttachment.format = VkFormat::VK_FORMAT_UNDEFINED;
+	desc.colourAttachment.samples = VK_SAMPLE_COUNT_1_BIT; //No MSAA
+	desc.colourAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	desc.colourAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	desc.colourAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; //Colour attachment - no stencil
+	desc.colourAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Colour attachment - no stencil
+	desc.colourAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	desc.colourAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; //Layout to transition state after pass is done (for presentation)
 
-	//Define subpass description
-	desc.attachmentRef.attachment = 0; //Index into pAttachments array of VkRenderPassCreateInfo
-	desc.attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	//Define depth attachment description
+	desc.depthAttachment.flags = 0;
+	desc.depthAttachment.format = VkFormat::VK_FORMAT_UNDEFINED;
+	desc.depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT; //No MSAA
+	desc.depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	desc.depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Don't need depth after the frame
+	desc.depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	desc.depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	desc.depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	desc.depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+	//Subpass attachment references
+	desc.colourAttachmentRef.attachment = 0; //Index into pAttachments array of VkRenderPassCreateInfo
+	desc.colourAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	desc.depthAttachmentRef.attachment = 1;
+	desc.depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	
 	//Define subpass
 	desc.subpass.flags = 0;
 	desc.subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	desc.subpass.colorAttachmentCount = 1;
-	desc.subpass.pColorAttachments = &desc.attachmentRef;
+	desc.subpass.pColorAttachments = &(desc.colourAttachmentRef);
+	desc.subpass.pDepthStencilAttachment = &(desc.depthAttachmentRef);
 
 	//Define render pass
+	desc.attachmentDescriptions = { desc.colourAttachment, desc.depthAttachment };
 	desc.createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	desc.createInfo.pNext = nullptr;
 	desc.createInfo.flags = 0;
 	desc.createInfo.dependencyCount = 0;
 	desc.createInfo.pDependencies = nullptr;
-	desc.createInfo.attachmentCount = 1;
-	desc.createInfo.pAttachments = &(desc.attachment);
+	desc.createInfo.attachmentCount = static_cast<std::uint32_t>(desc.attachmentDescriptions.size());
+	desc.createInfo.pAttachments = desc.attachmentDescriptions.data();
 	desc.createInfo.subpassCount = 1;
 	desc.createInfo.pSubpasses = &desc.subpass;
 
@@ -531,12 +549,38 @@ void VulkanRenderManager::CreateSwapchainImageViews()
 
 
 
+void VulkanRenderManager::InitialiseDepthTexture()
+{
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER, "Creating Depth Texture\n");
+
+	//Find a supported format
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "  Searching for available depth texture image format", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
+	depthTextureFormat = device.FindSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER, "success (format: " + std::to_string(depthTextureFormat) + ")\n", VK_LOGGER_WIDTH::DEFAULT, false);
+
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "  Creating depth texture\n");
+	depthTexture = imageFactory.AllocateImage(swapchainExtent, depthTextureFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "  Transitioning depth texture from UNDEFINED to DEPTH_STENCIL_ATTACHMENT_OPTIMAL\n");
+	imageFactory.TransitionImage(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+								  VK_IMAGE_ASPECT_DEPTH_BIT,
+								  0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+								  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+								  depthTexture);
+	
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "  Creating depth texture view\n");
+	depthTextureView = imageFactory.CreateImageView(depthTexture, depthTextureFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+
+
+
 void VulkanRenderManager::CreateRenderPass(VkRenderPassCreateInfo& _renderPassCreateInfo)
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER, "Creating Render Pass\n");
 	
-	//Loop through pAttachments and check format - if UNDEFINED, set to swapchain image format
+	//Loop through pAttachments and check format - if UNDEFINED, set to swapchain image format or depth format (depending on final layout)
 	//Can't modify original array, so remake it
 	std::vector<VkAttachmentDescription> attachments;
 	if (_renderPassCreateInfo.pAttachments != nullptr)
@@ -547,8 +591,16 @@ void VulkanRenderManager::CreateRenderPass(VkRenderPassCreateInfo& _renderPassCr
 	{
 		if (_renderPassCreateInfo.pAttachments[i].format == VkFormat::VK_FORMAT_UNDEFINED)
 		{
-			logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "Setting attachment " + std::to_string(i) + " to swapchain image format\n");
-			attachments[i].format = swapchainImageFormat;
+			if (_renderPassCreateInfo.pAttachments[i].finalLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+			{
+				logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "Setting attachment " + std::to_string(i) + " to swapchain image format\n");
+				attachments[i].format = swapchainImageFormat;
+			}
+			else if (_renderPassCreateInfo.pAttachments[i].finalLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+			{
+				logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "Setting attachment " + std::to_string(i) + " to depth format\n");
+				attachments[i].format = depthTextureFormat;
+			}
 		}
 	}
 	_renderPassCreateInfo.pAttachments = attachments.data();
@@ -573,13 +625,15 @@ void VulkanRenderManager::CreateSwapchainFramebuffers()
 	swapchainFramebuffers.resize(swapchainImageViews.size());
 	for (std::size_t i{ 0 }; i < swapchainFramebuffers.size(); ++i)
 	{
+		VkImageView attachments[] { swapchainImageViews[i], depthTextureView };
+		
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.pNext = nullptr;
 		framebufferInfo.flags = 0;
 		framebufferInfo.renderPass = renderPass;
-		framebufferInfo.attachmentCount = 1;
-		framebufferInfo.pAttachments = &(swapchainImageViews[i]);
+		framebufferInfo.attachmentCount = 2;
+		framebufferInfo.pAttachments = attachments;
 		framebufferInfo.width = swapchainExtent.width;
 		framebufferInfo.height = swapchainExtent.height;
 		framebufferInfo.layers = 1;

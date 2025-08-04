@@ -34,6 +34,10 @@ namespace Neki
 		[[nodiscard]] const VkDevice& GetDevice() const;
 		[[nodiscard]] const VkQueue& GetGraphicsQueue() const;
 		[[nodiscard]] const std::size_t& GetGraphicsQueueFamilyIndex() const;
+
+		//Finds a supported format from the list of _candidates for a given tiling and feature set
+		[[nodiscard]] VkFormat FindSupportedFormat(const std::vector<VkFormat>& _candidates, VkImageTiling _tiling, VkFormatFeatureFlags _features) const;
+		
 		
 	private:
 		//Dependency injections from VKApp

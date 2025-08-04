@@ -654,4 +654,26 @@ const VkDevice& VulkanDevice::GetDevice() const { return device; }
 const VkQueue& VulkanDevice::GetGraphicsQueue() const { return graphicsQueue; }
 const std::size_t& VulkanDevice::GetGraphicsQueueFamilyIndex() const { return graphicsQueueFamilyIndex; }
 
+
+
+VkFormat VulkanDevice::FindSupportedFormat(const std::vector<VkFormat>& _candidates, VkImageTiling _tiling, VkFormatFeatureFlags _features) const
+{
+	for (const VkFormat& format : _candidates)
+	{
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+		if (_tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & _features) == _features)
+		{
+			return format;
+		}
+		if (_tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & _features) == _features)
+		{
+			return format;
+		}
+	}
+
+	logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::DEVICE, "Failed to find a supported format in VulkanDevice::FindSupportedFormat");
+	throw std::runtime_error("");
+}
+
 }
