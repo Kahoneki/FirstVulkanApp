@@ -11,28 +11,19 @@
 
 #include "VKApp.h"
 
+#include "../Managers/TimeManager.h"
+
 namespace Neki
 {
 
-VKApp::VKApp(VkExtent2D _windowSize,
-			 VkRenderPassCreateInfo _renderPassDesc,
-			 std::uint32_t _descriptorPoolSizeCount,
-			 VkDescriptorPoolSize* _descriptorPoolSizes,
-			 const std::uint32_t _apiVer,
-			 const char* _appName,
-			 const VKLoggerConfig& _loggerConfig,
-			 const VK_ALLOCATOR_TYPE _allocatorType,
-			 std::vector<const char*>* _desiredInstanceLayers,
-			 std::vector<const char*>* _desiredInstanceExtensions,
-			 std::vector<const char*>* _desiredDeviceLayers,
-			 std::vector<const char*>* _desiredDeviceExtensions)
-	: logger(_loggerConfig), instDebugAllocator(_allocatorType), deviceDebugAllocator(_allocatorType),
-	  vulkanDevice(std::make_unique<VulkanDevice>(logger, instDebugAllocator, deviceDebugAllocator, _apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions)),
+VKApp::VKApp(VKAppCreationDescription _creationDescription)
+	: logger(*_creationDescription.loggerConfig), instDebugAllocator(_creationDescription.allocatorType), deviceDebugAllocator(_creationDescription.allocatorType),
+	  vulkanDevice(std::make_unique<VulkanDevice>(logger, instDebugAllocator, deviceDebugAllocator, _creationDescription.apiVer, _creationDescription.appName, _creationDescription.desiredInstanceLayerCount, _creationDescription.desiredInstanceLayers, _creationDescription.desiredInstanceExtensionCount, _creationDescription.desiredInstanceExtensions, _creationDescription.desiredDeviceLayerCount, _creationDescription.desiredDeviceLayers, _creationDescription.desiredDeviceExtensionCount, _creationDescription.desiredDeviceExtensions)),
 	  vulkanCommandPool(std::make_unique<VulkanCommandPool>(logger, deviceDebugAllocator, *vulkanDevice, VK_COMMAND_POOL_TYPE::GRAPHICS)),
-	  vulkanDescriptorPool(std::make_unique<VulkanDescriptorPool>(logger, deviceDebugAllocator, *vulkanDevice, _descriptorPoolSizeCount, _descriptorPoolSizes)),
+	  vulkanDescriptorPool(std::make_unique<VulkanDescriptorPool>(logger, deviceDebugAllocator, *vulkanDevice, _creationDescription.descriptorPoolSizeCount, _creationDescription.descriptorPoolSizes)),
 	  bufferFactory(std::make_unique<BufferFactory>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool)),
 	  imageFactory(std::make_unique<ImageFactory>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *bufferFactory)),
-	  vulkanRenderManager(std::make_unique<VulkanRenderManager>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *imageFactory, _windowSize, 3, _renderPassDesc))
+	  vulkanRenderManager(std::make_unique<VulkanRenderManager>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *imageFactory, _creationDescription.windowSize, 3, _creationDescription.renderPassDesc))
 {
 	vertexBuffer = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
@@ -63,25 +54,11 @@ VKApp::~VKApp()
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION,"Shutting down VKApp\n");
 
+	vkDeviceWaitIdle(vulkanDevice->GetDevice());
+	
 	//Unmap buffers
 	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ubo));
 	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::APPLICATION, "  UBO memory unmapped\n");
-}
-
-
-
-void VKApp::Run()
-{
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Starting Render\n");
-	
-	while (!vulkanRenderManager->WindowShouldClose())
-	{
-		glfwPollEvents();
-		DrawFrame();
-	}
-
-	vkDeviceWaitIdle(vulkanDevice->GetDevice());
 }
 
 
@@ -449,7 +426,8 @@ void VKApp::DrawFrame()
 	vkCmdBindDescriptorSets(vulkanRenderManager->GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanGraphicsPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, nullptr);
 
 	//Update cube data
-	cubeModelMatrix = glm::rotate(cubeModelMatrix, glm::radians(0.01f), glm::vec3(1,0,0));
+	float speed{ 50.0f };
+	cubeModelMatrix = glm::rotate(cubeModelMatrix, glm::radians(speed * static_cast<float>(TimeManager::dt)), glm::vec3(1,0,0));
 	vkCmdPushConstants(vulkanRenderManager->GetCurrentCommandBuffer(), vulkanGraphicsPipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &cubeModelMatrix);
 	
 	//Define viewport
@@ -468,7 +446,7 @@ void VKApp::DrawFrame()
 	scissor.extent = vulkanRenderManager->GetSwapchainExtent();
 	vkCmdSetScissor(vulkanRenderManager->GetCurrentCommandBuffer(), 0, 1, &scissor);
 	
-	//Draw the damn triangle
+	//Draw the damn cube
 	vkCmdDrawIndexed(vulkanRenderManager->GetCurrentCommandBuffer(), 36, 1, 0, 0, 0);
 
 	vulkanRenderManager->SubmitAndPresent();

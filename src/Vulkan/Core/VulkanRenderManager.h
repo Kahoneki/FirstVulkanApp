@@ -12,7 +12,7 @@
 namespace Neki
 {
 
-//Only used for returning a memory-safe render pass create info in GetDefaultRenderPassCreateInfo
+//For internal use only
 struct DefaultRenderPassDescription
 {
 	friend class VulkanRenderManager;
@@ -35,7 +35,8 @@ private:
 class VulkanRenderManager
 {
 public:
-	//_renderPassDesc should be fully filled out. To use the swapchain image format for attachments, set format to VkFormat::VK_FORMAT_UNDEFINED and it will be replaced
+	//_renderPassDesc should, if provided, be fully filled out. To use the swapchain image or depth formats for attachments, set format to VkFormat::VK_FORMAT_UNDEFINED and it will be replaced
+	//Alternatively, leave _renderPassDesc as nullptr to use a default render pass
 	explicit VulkanRenderManager(const VKLogger& _logger,
 							 VKDebugAllocator& _deviceDebugAllocator,
 							 const VulkanDevice& _device,
@@ -43,7 +44,7 @@ public:
 							 ImageFactory& _imageFactory,
 							 VkExtent2D _windowSize,
 							 std::size_t _framesInFlight,
-							 VkRenderPassCreateInfo& _renderPassDesc);
+							 VkRenderPassCreateInfo* _renderPassDesc=nullptr);
 
 	~VulkanRenderManager();
 	
@@ -54,9 +55,6 @@ public:
 	[[nodiscard]] VkExtent2D GetSwapchainExtent();
 	[[nodiscard]] VkRenderPass GetRenderPass();
 	[[nodiscard]] bool WindowShouldClose() const;
-
-	//Use Neki::VulkanRenderManager::GetDefaultRenderPassCreateInfo.createInfo to get a default create info that can be passed to VulkanRenderManager's constructor
-	static DefaultRenderPassDescription GetDefaultRenderPassCreateInfo();
 
 	
 private:

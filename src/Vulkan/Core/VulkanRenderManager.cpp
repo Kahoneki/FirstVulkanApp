@@ -10,7 +10,7 @@ namespace Neki
 
 
 
-VulkanRenderManager::VulkanRenderManager(const VKLogger& _logger, VKDebugAllocator& _deviceDebugAllocator, const VulkanDevice& _device, VulkanCommandPool& _commandPool, ImageFactory& _imageFactory, VkExtent2D _windowSize, std::size_t _framesInFlight, VkRenderPassCreateInfo& _renderPassDesc)
+VulkanRenderManager::VulkanRenderManager(const VKLogger& _logger, VKDebugAllocator& _deviceDebugAllocator, const VulkanDevice& _device, VulkanCommandPool& _commandPool, ImageFactory& _imageFactory, VkExtent2D _windowSize, std::size_t _framesInFlight, VkRenderPassCreateInfo* _renderPassDesc)
 										: logger(_logger), deviceDebugAllocator(_deviceDebugAllocator), device(_device), commandPool(_commandPool), imageFactory(_imageFactory)
 {
 	windowSize = _windowSize;
@@ -34,14 +34,69 @@ VulkanRenderManager::VulkanRenderManager(const VKLogger& _logger, VKDebugAllocat
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER, "Creating Render Manager\n");
 
-	glfwInit();
 	CreateWindow();
 	CreateSurface();
 	AllocateCommandBuffers();
 	CreateSwapchain();
 	CreateSwapchainImageViews();
 	InitialiseDepthTexture();
-	CreateRenderPass(_renderPassDesc);
+
+	if (_renderPassDesc == nullptr)
+	{
+		//Define colour attachment description
+		DefaultRenderPassDescription renderPassDesc{};
+		renderPassDesc.colourAttachment.flags = 0;
+		renderPassDesc.colourAttachment.format = VkFormat::VK_FORMAT_UNDEFINED;
+		renderPassDesc.colourAttachment.samples = VK_SAMPLE_COUNT_1_BIT; //No MSAA
+		renderPassDesc.colourAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		renderPassDesc.colourAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		renderPassDesc.colourAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; //Colour attachment - no stencil
+		renderPassDesc.colourAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Colour attachment - no stencil
+		renderPassDesc.colourAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		renderPassDesc.colourAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; //Layout to transition state after pass is done (for presentation)
+
+		//Define depth attachment description
+		renderPassDesc.depthAttachment.flags = 0;
+		renderPassDesc.depthAttachment.format = VkFormat::VK_FORMAT_UNDEFINED;
+		renderPassDesc.depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT; //No MSAA
+		renderPassDesc.depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		renderPassDesc.depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Don't need depth after the frame
+		renderPassDesc.depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		renderPassDesc.depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		renderPassDesc.depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		renderPassDesc.depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		//Subpass attachment references
+		renderPassDesc.colourAttachmentRef.attachment = 0; //Index into pAttachments array of VkRenderPassCreateInfo
+		renderPassDesc.colourAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		renderPassDesc.depthAttachmentRef.attachment = 1;
+		renderPassDesc.depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		
+		//Define subpass
+		renderPassDesc.subpass.flags = 0;
+		renderPassDesc.subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		renderPassDesc.subpass.colorAttachmentCount = 1;
+		renderPassDesc.subpass.pColorAttachments = &(renderPassDesc.colourAttachmentRef);
+		renderPassDesc.subpass.pDepthStencilAttachment = &(renderPassDesc.depthAttachmentRef);
+
+		//Define render pass
+		renderPassDesc.attachmentDescriptions = { renderPassDesc.colourAttachment, renderPassDesc.depthAttachment };
+		renderPassDesc.createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassDesc.createInfo.pNext = nullptr;
+		renderPassDesc.createInfo.flags = 0;
+		renderPassDesc.createInfo.dependencyCount = 0;
+		renderPassDesc.createInfo.pDependencies = nullptr;
+		renderPassDesc.createInfo.attachmentCount = static_cast<std::uint32_t>(renderPassDesc.attachmentDescriptions.size());
+		renderPassDesc.createInfo.pAttachments = renderPassDesc.attachmentDescriptions.data();
+		renderPassDesc.createInfo.subpassCount = 1;
+		renderPassDesc.createInfo.pSubpasses = &renderPassDesc.subpass;
+		CreateRenderPass(renderPassDesc.createInfo);
+	}
+	else
+	{
+		CreateRenderPass(*_renderPassDesc);
+	}
+
 	CreateSwapchainFramebuffers();
 	CreateSyncObjects();
 }
@@ -139,8 +194,6 @@ VulkanRenderManager::~VulkanRenderManager()
 		window = nullptr;
 		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::RENDER_MANAGER,"  Window Destroyed\n");
 	}
-
-	glfwTerminate();
 }
 
 
@@ -276,62 +329,6 @@ bool VulkanRenderManager::WindowShouldClose() const
 
 
 
-DefaultRenderPassDescription VulkanRenderManager::GetDefaultRenderPassCreateInfo()
-{
-	DefaultRenderPassDescription desc;
-	
-	//Define colour attachment description
-	desc.colourAttachment.flags = 0;
-	desc.colourAttachment.format = VkFormat::VK_FORMAT_UNDEFINED;
-	desc.colourAttachment.samples = VK_SAMPLE_COUNT_1_BIT; //No MSAA
-	desc.colourAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	desc.colourAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	desc.colourAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; //Colour attachment - no stencil
-	desc.colourAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Colour attachment - no stencil
-	desc.colourAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	desc.colourAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; //Layout to transition state after pass is done (for presentation)
-
-	//Define depth attachment description
-	desc.depthAttachment.flags = 0;
-	desc.depthAttachment.format = VkFormat::VK_FORMAT_UNDEFINED;
-	desc.depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT; //No MSAA
-	desc.depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	desc.depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Don't need depth after the frame
-	desc.depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	desc.depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	desc.depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	desc.depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	//Subpass attachment references
-	desc.colourAttachmentRef.attachment = 0; //Index into pAttachments array of VkRenderPassCreateInfo
-	desc.colourAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	desc.depthAttachmentRef.attachment = 1;
-	desc.depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	
-	//Define subpass
-	desc.subpass.flags = 0;
-	desc.subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	desc.subpass.colorAttachmentCount = 1;
-	desc.subpass.pColorAttachments = &(desc.colourAttachmentRef);
-	desc.subpass.pDepthStencilAttachment = &(desc.depthAttachmentRef);
-
-	//Define render pass
-	desc.attachmentDescriptions = { desc.colourAttachment, desc.depthAttachment };
-	desc.createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	desc.createInfo.pNext = nullptr;
-	desc.createInfo.flags = 0;
-	desc.createInfo.dependencyCount = 0;
-	desc.createInfo.pDependencies = nullptr;
-	desc.createInfo.attachmentCount = static_cast<std::uint32_t>(desc.attachmentDescriptions.size());
-	desc.createInfo.pAttachments = desc.attachmentDescriptions.data();
-	desc.createInfo.subpassCount = 1;
-	desc.createInfo.pSubpasses = &desc.subpass;
-
-	return desc;
-}
-
-
-
 void VulkanRenderManager::CreateWindow()
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
@@ -355,10 +352,10 @@ void VulkanRenderManager::CreateSurface()
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::RENDER_MANAGER, "Creating Surface\n");
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::RENDER_MANAGER, "Creating surface", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	VkResult result{ glfwCreateWindowSurface(device.GetInstance(), window, nullptr, &surface) }; //GLFW does its own allocations which gets buggy when combined with VkAllocationCallbacks, don't use debug allocator
-	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::RENDER_MANAGER, result == VK_SUCCESS ? "success\n" : "failure\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	logger.Log(result == VK_SUCCESS ? VK_LOGGER_CHANNEL::SUCCESS : VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::RENDER_MANAGER, result == VK_SUCCESS ? "success\n" : "failure", VK_LOGGER_WIDTH::DEFAULT, false);
 	if (result != VK_SUCCESS)
 	{
-		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::RENDER_MANAGER, "(" + std::to_string(result) + ")\n", VK_LOGGER_WIDTH::DEFAULT, false);
+		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::RENDER_MANAGER, " (" + std::to_string(result) + ")\n", VK_LOGGER_WIDTH::DEFAULT, false);
 		throw std::runtime_error("");
 	}
 }

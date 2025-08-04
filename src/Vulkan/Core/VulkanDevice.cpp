@@ -3,6 +3,7 @@
 
 #include <format>
 #include <cstring>
+#include <GLFW/glfw3.h>
 
 #include "../../Utils/Strings/format.h"
 
@@ -31,19 +32,19 @@ VulkanDevice::VulkanDevice(const VKLogger& _logger,
                            VKDebugAllocator& _deviceDebugAllocator,
                            const std::uint32_t _apiVer,
                            const char* _appName,
-                           std::vector<const char*>* _desiredInstanceLayers,
-                           std::vector<const char*>* _desiredInstanceExtensions,
-                           std::vector<const char*>* _desiredDeviceLayers,
-                           std::vector<const char*>* _desiredDeviceExtensions)
+                           std::uint32_t _desiredInstanceLayerCount, const char** _desiredInstanceLayers,
+						   std::uint32_t _desiredInstanceExtensionCount, const char** _desiredInstanceExtensions,
+						   std::uint32_t _desiredDeviceLayerCount, const char** _desiredDeviceLayers,
+						   std::uint32_t _desiredDeviceExtensionCount, const char** _desiredDeviceExtensions)
 					: logger(_logger), instDebugAllocator(_instDebugAllocator), deviceDebugAllocator(_deviceDebugAllocator)
 {
 	inst = VK_NULL_HANDLE;
 	physicalDevice = VK_NULL_HANDLE;
 	device = VK_NULL_HANDLE;
 	graphicsQueue = VK_NULL_HANDLE;
-	CreateInstance(_apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions);
+	CreateInstance(_apiVer, _appName, _desiredInstanceLayerCount, _desiredInstanceLayers, _desiredInstanceExtensionCount, _desiredInstanceExtensions);
 	SelectPhysicalDevice();
-	CreateLogicalDevice(_desiredDeviceLayers, _desiredDeviceExtensions);
+	CreateLogicalDevice(_desiredDeviceLayerCount, _desiredDeviceLayers, _desiredDeviceExtensionCount, _desiredDeviceExtensions);
 }
 
 
@@ -70,7 +71,7 @@ VulkanDevice::~VulkanDevice()
 
 
 
-void VulkanDevice::CreateInstance(const std::uint32_t _apiVer, const char* _appName, std::vector<const char*>* _desiredInstanceLayers, std::vector<const char*>* _desiredInstanceExtensions)
+void VulkanDevice::CreateInstance(const std::uint32_t _apiVer, const char* _appName, std::uint32_t _desiredInstanceLayerCount, const char** _desiredInstanceLayers, std::uint32_t _desiredInstanceExtensionCount, const char** _desiredInstanceExtensions)
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::DEVICE, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::DEVICE, "Creating Instance\n");
@@ -122,31 +123,49 @@ void VulkanDevice::CreateInstance(const std::uint32_t _apiVer, const char* _appN
 		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, entryStr, VK_LOGGER_WIDTH::DEFAULT, false);
 
 		//Check if current layer is in list of desired layers
-		if (_desiredInstanceLayers == nullptr) { continue; }
-		std::vector<const char*>::const_iterator it{ std::find_if(_desiredInstanceLayers->begin(), _desiredInstanceLayers->end(), [&](const char* l)
+		if (_desiredInstanceLayerCount == 0) { continue; }
+		for (std::size_t j{ 0 }; j<_desiredInstanceLayerCount; ++j)
 		{
-			return std::strcmp(l, instanceLayers[i].layerName) == 0;
-		}) };
-		if (it != _desiredInstanceLayers->end())
-		{
-			instanceLayerNamesToBeAdded.push_back(*it);
-			_desiredInstanceLayers->erase(it);
+			if (strcmp(_desiredInstanceLayers[j], instanceLayers[i].layerName) == 0)
+			{
+				instanceLayerNamesToBeAdded.push_back(_desiredInstanceLayers[j]);
+			}
 		}
 	}
+
+	//Remove duplicates
+	std::sort(instanceLayerNamesToBeAdded.begin(), instanceLayerNamesToBeAdded.end(), [](const char* a, const char* b){ return std::strcmp(a,b) < 0; });
+	instanceLayerNamesToBeAdded.erase(std::unique(instanceLayerNamesToBeAdded.begin(), instanceLayerNamesToBeAdded.end(), [](const char* a, const char* b) { return std::strcmp(a, b) == 0; }), instanceLayerNamesToBeAdded.end());
 	
 	for (const std::string& layerName : instanceLayerNamesToBeAdded)
 	{
 		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DEVICE, "Added " + layerName + " to instance creation\n");
 	}
-	if (_desiredInstanceLayers != nullptr)
+	if (_desiredInstanceLayerCount != 0)
 	{
-		for (const std::string& layerName : *_desiredInstanceLayers)
+		for (std::size_t i{ 0 }; i<_desiredInstanceLayerCount; ++i)
 		{
-			logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Failed to add " + layerName + " to instance creation - layer does not exist or is unavailable\n");
+			bool found{ false };
+			for (const std::string& layerName : instanceLayerNamesToBeAdded)
+			{
+				if (strcmp(_desiredInstanceLayers[i], layerName.c_str()) == 0)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+			{
+				logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Failed to add " + std::string(_desiredInstanceLayers[i]) + " to instance creation - layer does not exist or is unavailable\n");
+			}
 		}
 	}
 
 
+	//Add necessary GLFW instance-extensions
+	std::uint32_t glfwExtensionCount{ 0 };
+	const char** glfwExtensions{ glfwGetRequiredInstanceExtensions(&glfwExtensionCount) };
+	
 	//Enumerate available instance extensions
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, "Scanning for available instance-level extensions", VK_LOGGER_WIDTH::SUCCESS_FAILURE);
 	std::uint32_t instanceExtensionCount{ 0 };
@@ -184,28 +203,68 @@ void VulkanDevice::CreateInstance(const std::uint32_t _apiVer, const char* _appN
 								  instanceExtensions[i].specVersion, specW) };
 		logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::DEVICE, entryStr, VK_LOGGER_WIDTH::DEFAULT, false);
 
-		//Check if current extension is in list of desired extensions
-		if (_desiredInstanceExtensions == nullptr) { continue; }
-		std::vector<const char*>::const_iterator it{ std::find_if(_desiredInstanceExtensions->begin(), _desiredInstanceExtensions->end(), [&](const char* e)
+		//Check if current extension is in list of desired extensions or GLFW extensions
+		if (_desiredInstanceExtensionCount == 0 && glfwExtensionCount == 0) { continue; }
+		for (std::size_t j{ 0 }; j<_desiredInstanceExtensionCount; ++j)
 		{
-			return std::strcmp(e, instanceExtensions[i].extensionName) == 0;
-		}) };
-		if (it != _desiredInstanceExtensions->end())
+			if (strcmp(_desiredInstanceExtensions[j], instanceExtensions[i].extensionName) == 0)
+			{
+				instanceExtensionNamesToBeAdded.push_back(_desiredInstanceExtensions[j]);
+			}
+		}
+		for (std::size_t j{ 0 }; j<glfwExtensionCount; ++j)
 		{
-			instanceExtensionNamesToBeAdded.push_back(*it);
-			_desiredInstanceExtensions->erase(it);
+			if (strcmp(glfwExtensions[j], instanceExtensions[i].extensionName) == 0)
+			{
+				instanceExtensionNamesToBeAdded.push_back(glfwExtensions[j]);
+			}
 		}
 	}
+
+	//Remove duplicates
+	std::sort(instanceExtensionNamesToBeAdded.begin(), instanceExtensionNamesToBeAdded.end(), [](const char* a, const char* b){ return std::strcmp(a,b) < 0; });
+	instanceExtensionNamesToBeAdded.erase(std::unique(instanceExtensionNamesToBeAdded.begin(), instanceExtensionNamesToBeAdded.end(), [](const char* a, const char* b) { return std::strcmp(a, b) == 0; }), instanceExtensionNamesToBeAdded.end());
 
 	for (const std::string& extensionName : instanceExtensionNamesToBeAdded)
 	{
 		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DEVICE, "Added " + extensionName + " to instance creation\n");
 	}
-	if (_desiredInstanceExtensions != nullptr)
+	if (_desiredInstanceExtensionCount != 0)
 	{
-		for (const std::string& extensionName : *_desiredInstanceExtensions)
+		for (std::size_t i{ 0 }; i<_desiredInstanceExtensionCount; ++i)
 		{
-			logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Failed to add " + extensionName + " to instance creation - layer does not exist or is unavailable\n");
+			bool found{ false };
+			for (const std::string& extensionName : instanceExtensionNamesToBeAdded)
+			{
+				if (strcmp(_desiredInstanceExtensions[i], extensionName.c_str()) == 0)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+			{
+				logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Failed to add " + std::string(_desiredInstanceExtensions[i]) + " to instance creation - extension does not exist or is unavailable\n");
+			}
+		}
+	}
+	if (glfwExtensionCount != 0)
+	{
+		for (std::size_t i{ 0 }; i<glfwExtensionCount; ++i)
+		{
+			bool found{ false };
+			for (const std::string& extensionName : instanceExtensionNamesToBeAdded)
+			{
+				if (strcmp(glfwExtensions[i], extensionName.c_str()) == 0)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+			{
+				logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::DEVICE, "Failed to add " + std::string(glfwExtensions[i]) + " to instance creation - extension does not exist or is unavailable\n");
+			}
 		}
 	}
 
@@ -496,7 +555,7 @@ void VulkanDevice::SelectPhysicalDevice()
 
 
 
-void VulkanDevice::CreateLogicalDevice(std::vector<const char *> *_desiredDeviceLayers, std::vector<const char *> *_desiredDeviceExtensions)
+void VulkanDevice::CreateLogicalDevice(std::uint32_t _desiredDeviceLayerCount, const char** const _desiredDeviceLayers, std::uint32_t _desiredDeviceExtensionCount, const char** const _desiredDeviceExtensions)
 {
 	//If a name is in a `desired...` vector and is available, it will be added to its corresponding `...ToBeAdded` vector
 	std::vector<const char*> deviceLayerNamesToBeAdded;
@@ -538,32 +597,45 @@ void VulkanDevice::CreateLogicalDevice(std::vector<const char *> *_desiredDevice
 	std::vector<VkLayerProperties> deviceLayers;
 	deviceLayers.resize(deviceLayerCount);
 	vkEnumerateDeviceLayerProperties(physicalDevice, &deviceLayerCount, deviceLayers.data());
-	for (std::size_t j{ 0 }; j < deviceLayerCount; ++j)
+	for (std::size_t i{ 0 }; i < deviceLayerCount; ++i)
 	{
 		//Check if current layer is in list of desired layers
-		if (_desiredDeviceLayers == nullptr) { break; }
-		std::vector<const char*>::const_iterator it{ std::find_if(_desiredDeviceLayers->begin(), _desiredDeviceLayers->end(), [&](const char* l)
+		if (_desiredDeviceLayerCount == 0) { continue; }
+		for (std::size_t j{ 0 }; j<_desiredDeviceLayerCount; ++j)
 		{
-			return std::strcmp(l, deviceLayers[j].layerName) == 0;
-		}) };
-
-		if (it != _desiredDeviceLayers->end())
-		{
-			deviceLayerNamesToBeAdded.push_back(*it);
-			_desiredDeviceLayers->erase(it);
+			if (strcmp(_desiredDeviceLayers[j], deviceLayers[i].layerName) == 0)
+			{
+				deviceLayerNamesToBeAdded.push_back(_desiredDeviceLayers[j]);
+			}
 		}
 	}
 	for (const std::string& layerName : deviceLayerNamesToBeAdded)
 	{
 		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DEVICE, "Added " + layerName + " to device creation\n");
 	}
-	if (_desiredDeviceLayers != nullptr)
+	if (_desiredDeviceLayerCount != 0)
 	{
-		for (const std::string& layerName : *_desiredDeviceLayers)
+		for (std::size_t i{ 0 }; i<_desiredDeviceLayerCount; ++i)
 		{
-			logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Failed to add " + layerName + " to device creation - layer does not exist or is unavailable\n");
+			bool found{ false };
+			for (const std::string& layerName : deviceLayerNamesToBeAdded)
+			{
+				if (strcmp(_desiredDeviceLayers[i], layerName.c_str()) == 0)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+			{
+				logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Failed to add " + std::string(_desiredDeviceLayers[i]) + " to device creation - layer does not exist or is unavailable\n");
+			}
 		}
 	}
+
+	//Remove duplicates
+	std::sort(deviceLayerNamesToBeAdded.begin(), deviceLayerNamesToBeAdded.end(), [](const char* a, const char* b){ return std::strcmp(a,b) < 0; });
+	deviceLayerNamesToBeAdded.erase(std::unique(deviceLayerNamesToBeAdded.begin(), deviceLayerNamesToBeAdded.end(), [](const char* a, const char* b) { return std::strcmp(a, b) == 0; }), deviceLayerNamesToBeAdded.end());
 
 	//Get desired extensions for chosen device
 	std::uint32_t deviceExtensionCount{ 0 };
@@ -571,30 +643,44 @@ void VulkanDevice::CreateLogicalDevice(std::vector<const char *> *_desiredDevice
 	std::vector<VkExtensionProperties> deviceExtensions;
 	deviceExtensions.resize(deviceExtensionCount);
 	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, deviceExtensions.data());
-	for (std::size_t j{ 0 }; j < deviceExtensionCount; ++j)
+	for (std::size_t i{ 0 }; i < deviceExtensionCount; ++i)
 	{
 		//Check if current extension is in list of desired extensions
-		if (_desiredDeviceExtensions == nullptr) { continue; }
-		std::vector<const char*>::const_iterator it{ std::find_if(_desiredDeviceExtensions->begin(), _desiredDeviceExtensions->end(), [&](const char* e)
+		if (_desiredDeviceExtensionCount == 0) { continue; }
+		for (std::size_t j{ 0 }; j<_desiredDeviceExtensionCount; ++j)
 		{
-			return std::strcmp(e, deviceExtensions[j].extensionName) == 0;
-		}) };
-		if (it != _desiredDeviceExtensions->end())
-		{
-			deviceExtensionNamesToBeAdded.push_back(*it);
-			_desiredDeviceExtensions->erase(it);
+			if (strcmp(_desiredDeviceExtensions[j], deviceExtensions[i].extensionName) == 0)
+			{
+				deviceExtensionNamesToBeAdded.push_back(_desiredDeviceExtensions[j]);
+			}
 		}
 	}
+
+	//Remove duplicates
+	std::sort(deviceExtensionNamesToBeAdded.begin(), deviceExtensionNamesToBeAdded.end(), [](const char* a, const char* b){ return std::strcmp(a,b) < 0; });
+	deviceExtensionNamesToBeAdded.erase(std::unique(deviceExtensionNamesToBeAdded.begin(), deviceExtensionNamesToBeAdded.end(), [](const char* a, const char* b) { return std::strcmp(a, b) == 0; }), deviceExtensionNamesToBeAdded.end());
+	
 	for (const std::string& extensionName : deviceExtensionNamesToBeAdded)
 	{
 		logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::DEVICE, "Added " + extensionName + " to device creation\n");
 	}
-	if (_desiredDeviceExtensions != nullptr)
+	if (_desiredDeviceExtensionCount != 0)
 	{
-		for (const std::string& extensionName : *_desiredDeviceExtensions)
+		for (std::size_t i{ 0 }; i<_desiredDeviceExtensionCount; ++i)
 		{
-			logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Failed to add " + extensionName + " to device creation - extension does not exist or is unavailable\n");
-
+			bool found{ false };
+			for (const std::string& extensionName : deviceExtensionNamesToBeAdded)
+			{
+				if (strcmp(_desiredDeviceExtensions[i], extensionName.c_str()) == 0)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+			{
+				logger.Log(VK_LOGGER_CHANNEL::WARNING, VK_LOGGER_LAYER::DEVICE, "Failed to add " + std::string(_desiredDeviceExtensions[i]) + " to device creation - extension does not exist or is unavailable\n");
+			}
 		}
 	}
 

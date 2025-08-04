@@ -2,44 +2,45 @@
 #include "Vulkan/VKApp.h"
 #include <iostream>
 
-void VKTest()
-{
-	std::vector<const char*> desiredInstanceLayerNames{ "VK_LAYER_KHRONOS_validation", "NOT_A_REAL_INSTANCE_LAYER" };
-	std::vector<const char*> desiredInstanceExtensionNames{ "VK_KHR_surface", "NOT_A_REAL_INSTANCE_EXTENSION" };
-	std::vector<const char*> desiredDeviceLayerNames{ "VK_LAYER_KHRONOS_validation", "NOT_A_REAL_DEVICE_LAYER" };
-	std::vector<const char*> desiredDeviceExtensionNames{ "VK_KHR_swapchain", "NOT_A_REAL_DEVICE_EXTENSION" };
+#include "Managers/Application.h"
 
-	//Add necessary GLFW instance-extensions
-	std::uint32_t glfwExtensionCount{ 0 };
-	const char** glfwExtensions{ glfwGetRequiredInstanceExtensions(&glfwExtensionCount) };
-	desiredInstanceExtensionNames.insert(desiredInstanceExtensionNames.end(), glfwExtensions, glfwExtensions + glfwExtensionCount);
+void AppTest()
+{
+	const char* desiredInstanceLayerNames[]{ "VK_LAYER_KHRONOS_validation", "NOT_A_REAL_INSTANCE_LAYER" };
+	const char* desiredInstanceExtensionNames[]{ "VK_KHR_surface", "NOT_A_REAL_INSTANCE_EXTENSION" };
+	const char* desiredDeviceLayerNames[]{ "VK_LAYER_KHRONOS_validation", "NOT_A_REAL_DEVICE_LAYER" };
+	const char* desiredDeviceExtensionNames[]{ "VK_KHR_swapchain", "NOT_A_REAL_DEVICE_EXTENSION" };
 
 	Neki::VKLoggerConfig loggerConfig{ true };
 
 	VkDescriptorPoolSize descriptorPoolSizes[]{ {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} };
 	
-	Neki::VKApp app
-	(
-		{800, 800},
-		Neki::VulkanRenderManager::GetDefaultRenderPassCreateInfo().createInfo,
-		2,
-		descriptorPoolSizes,
-		VK_MAKE_API_VERSION(0, 1, 4, 0),
-		"Neki App",
-		loggerConfig,
-		Neki::VK_ALLOCATOR_TYPE::DEBUG,
-		&desiredInstanceLayerNames,
-		&desiredInstanceExtensionNames,
-		&desiredDeviceLayerNames,
-		&desiredDeviceExtensionNames
-	);
+	Neki::VKAppCreationDescription creationDescription{};
+	creationDescription.windowSize = {800, 800};
+	creationDescription.renderPassDesc = nullptr;
+	creationDescription.descriptorPoolSizeCount = 2;
+	creationDescription.descriptorPoolSizes = descriptorPoolSizes;
+	creationDescription.apiVer = VK_MAKE_API_VERSION(0, 1, 4, 0);
+	creationDescription.appName = "Neki App";
+	creationDescription.loggerConfig = &loggerConfig;
+	creationDescription.allocatorType = Neki::VK_ALLOCATOR_TYPE::DEBUG;
+	creationDescription.desiredInstanceLayerCount = std::size(desiredInstanceLayerNames);
+	creationDescription.desiredInstanceLayers = desiredInstanceLayerNames;
+	creationDescription.desiredInstanceExtensionCount = std::size(desiredInstanceExtensionNames);
+	creationDescription.desiredInstanceExtensions = desiredInstanceExtensionNames;
+	creationDescription.desiredDeviceLayerCount = std::size(desiredDeviceLayerNames);
+	creationDescription.desiredDeviceLayers = desiredDeviceLayerNames;
+	creationDescription.desiredDeviceExtensionCount = std::size(desiredDeviceExtensionNames);
+	creationDescription.desiredDeviceExtensions = desiredDeviceExtensionNames;
 
-	app.Run();
+	Neki::Application app(creationDescription);
+	
+	app.Start();
 }
 
 int main()
 {
 	glfwInit();
-	VKTest();
+	AppTest();
 	glfwTerminate();
 }

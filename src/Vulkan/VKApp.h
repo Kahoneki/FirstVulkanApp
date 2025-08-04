@@ -36,25 +36,36 @@ struct Vertex
 	glm::vec2 texCoord;
 };
 
+struct VKAppCreationDescription
+{
+	VkExtent2D windowSize;
+	VkRenderPassCreateInfo* renderPassDesc;
+	std::uint32_t descriptorPoolSizeCount;
+	VkDescriptorPoolSize* descriptorPoolSizes;
+	std::uint32_t apiVer;
+	const char* appName;
+	VKLoggerConfig* loggerConfig;
+	VK_ALLOCATOR_TYPE allocatorType;
+	std::uint32_t desiredInstanceLayerCount;
+	const char** desiredInstanceLayers;
+	std::uint32_t desiredInstanceExtensionCount;
+	const char** desiredInstanceExtensions;
+	std::uint32_t desiredDeviceLayerCount;
+	const char** desiredDeviceLayers;
+	std::uint32_t desiredDeviceExtensionCount;
+	const char** desiredDeviceExtensions;
+};
+
 class VKApp final
 {
+
+	friend class Application;
+	
 public:
-	explicit VKApp(VkExtent2D _windowSize,
-				   VkRenderPassCreateInfo _renderPassDesc,
-				   std::uint32_t _descriptorPoolSizeCount,
-				   VkDescriptorPoolSize* _descriptorPoolSizes,
-				   const std::uint32_t _apiVer=VK_MAKE_API_VERSION(0,1,0,0),
-				   const char* _appName="Vulkan App",
-				   const VKLoggerConfig& _loggerConfig=VKLoggerConfig{},
-				   const VK_ALLOCATOR_TYPE _allocatorType=VK_ALLOCATOR_TYPE::DEFAULT,
-				   std::vector<const char*>* _desiredInstanceLayers=nullptr,
-				   std::vector<const char*>* _desiredInstanceExtensions=nullptr,
-				   std::vector<const char*>* _desiredDeviceLayers=nullptr,
-				   std::vector<const char*>* _desiredDeviceExtensions=nullptr);
+	explicit VKApp(VKAppCreationDescription _creationDescription);
 
 	~VKApp();
-
-	void Run();
+	
 	
 private:
 	VKLogger logger;

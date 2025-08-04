@@ -22,10 +22,10 @@ namespace Neki
 					VKDebugAllocator& _deviceDebugAllocator,
 					const std::uint32_t _apiVer=VK_MAKE_API_VERSION(0,1,0,0),
 					const char* _appName="Vulkan App",
-					std::vector<const char*>* _desiredInstanceLayers=nullptr,
-					std::vector<const char*>* _desiredInstanceExtensions=nullptr,
-					std::vector<const char*>* _desiredDeviceLayers=nullptr,
-					std::vector<const char*>* _desiredDeviceExtensions=nullptr);
+					std::uint32_t _desiredInstanceLayerCount=0, const char** _desiredInstanceLayers=nullptr,
+					std::uint32_t _desiredInstanceExtensionCount=0, const char** _desiredInstanceExtensions=nullptr,
+					std::uint32_t _desiredDeviceLayerCount=0, const char** _desiredDeviceLayers=nullptr,
+					std::uint32_t _desiredDeviceExtensionCount=0, const char** _desiredDeviceExtensions=nullptr);
 
 		~VulkanDevice();
 
@@ -56,9 +56,9 @@ namespace Neki
 		VkQueue graphicsQueue;
 
 
-		void CreateInstance(const std::uint32_t _apiVer, const char* _appName, std::vector<const char*>* _desiredInstanceLayers, std::vector<const char*>* _desiredInstanceExtensions);
+		void CreateInstance(const std::uint32_t _apiVer, const char* _appName, std::uint32_t _desiredInstanceLayerCount, const char** const _desiredInstanceLayers, std::uint32_t _desiredInstanceExtensionCount, const char** const _desiredInstanceExtensions);
 		void SelectPhysicalDevice();
-		void CreateLogicalDevice(std::vector<const char*>* _desiredDeviceLayers, std::vector<const char*>* _desiredDeviceExtensions);
+		void CreateLogicalDevice(std::uint32_t _desiredDeviceLayerCount, const char** const _desiredDeviceLayers, std::uint32_t _desiredDeviceExtensionCount, const char** const _desiredDeviceExtensions);
 	};
 }
 
