@@ -40,7 +40,7 @@ glm::mat4 Camera::GetProjectionMatrix(PROJECTION_METHOD _method) const
 	}
 	else
 	{
-		float aspectRatio{ static_cast<float>(renderManager.GetSwapchainExtent().width) / static_cast<float>(renderManager.GetSwapchainExtent().width) };
+		float aspectRatio{ static_cast<float>(renderManager.GetSwapchainExtent().width) / static_cast<float>(renderManager.GetSwapchainExtent().height) };
 		return glm::perspective(glm::radians(fov), aspectRatio, nearPlaneDist, farPlaneDist);
 	}
 }
