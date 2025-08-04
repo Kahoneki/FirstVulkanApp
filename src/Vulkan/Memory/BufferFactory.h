@@ -1,6 +1,7 @@
 #ifndef BUFFERFACTORY_H
 #define BUFFERFACTORY_H
 
+#include "../Core/VulkanCommandPool.h"
 #include "../Core/VulkanDevice.h"
 
 //Responsible for the initialisation, ownership, and clean shutdown of VkBuffers and accompanying VkDeviceMemorys
@@ -8,13 +9,23 @@ namespace Neki
 {
 
 
+//For internal use only
+struct BufferMetadata
+{
+	VkDeviceSize size;
+	VkBufferUsageFlags usage;
+	VkSharingMode sharingMode;
+	VkMemoryPropertyFlags flags;
+};
+
 
 class BufferFactory
 {
 public:
 	explicit BufferFactory(const VKLogger& _logger,
 						   VKDebugAllocator& _deviceDebugAllocator,
-						   const VulkanDevice& _device);
+						   const VulkanDevice& _device,
+						   VulkanCommandPool& _commandPool);
 
 	~BufferFactory();
 
@@ -30,6 +41,14 @@ public:
 	//Free a list of _count buffers
 	void FreeBuffers(std::uint32_t _count, VkBuffer* _buffers);
 
+	//Copies a host-visible buffer to a new device-local buffer and deletes the source buffer
+	//Buffer must have been allocated with BufferFactory
+	//The source buffer must have been created with the VK_BUFFER_USAGE_TRANSFER_SRC_BIT flag
+	//Optionally, set freeSourceBuffer=true to free the source buffer (note this will invalidate any currently active memory maps on the source buffer)
+	//Optionally, pass a (already begun) command buffer to this function and the barrier command will be recorded to it but not executed
+	//Leaving _commandBuffer as nullptr will cause the function to allocate its own command buffer and automatically submit it
+	VkBuffer TransferToDeviceLocalBuffer(VkBuffer& _buffer, bool _freeSourceBuffer=false, VkCommandBuffer* _commandBuffer=nullptr);
+
 
 	[[nodiscard]] VkDeviceMemory GetMemory(VkBuffer _buffer);
 
@@ -42,8 +61,10 @@ private:
 	const VKLogger& logger;
 	VKDebugAllocator& deviceDebugAllocator;
 	const VulkanDevice& device;
+	VulkanCommandPool& commandPool;
 
 	std::unordered_map<VkBuffer, VkDeviceMemory> bufferMemoryMap;
+	std::unordered_map<VkBuffer, BufferMetadata> bufferMetadataMap;
 };
 
 

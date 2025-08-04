@@ -2,6 +2,7 @@
 #include "../../Utils/Strings/format.h"
 
 #include <stdexcept>
+#include <algorithm>
 
 
 namespace Neki
@@ -9,8 +10,8 @@ namespace Neki
 
 
 
-BufferFactory::BufferFactory(const VKLogger& _logger, VKDebugAllocator& _deviceDebugAllocator, const VulkanDevice& _device)
-							: logger(_logger), deviceDebugAllocator(_deviceDebugAllocator), device(_device)
+BufferFactory::BufferFactory(const VKLogger& _logger, VKDebugAllocator& _deviceDebugAllocator, const VulkanDevice& _device, VulkanCommandPool& _commandPool)
+							: logger(_logger), deviceDebugAllocator(_deviceDebugAllocator), device(_device), commandPool(_commandPool)
 {
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::BUFFER_FACTORY, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::BUFFER_FACTORY, "Buffer Factory Initialised\n");
@@ -67,6 +68,66 @@ void BufferFactory::FreeBuffers(std::uint32_t _count, VkBuffer* _buffers)
 	{
 		FreeBufferImpl(_buffers[i]);
 	}
+}
+
+
+
+VkBuffer BufferFactory::TransferToDeviceLocalBuffer(VkBuffer& _buffer, bool _freeSourceBuffer, VkCommandBuffer* _commandBuffer)
+{
+	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::BUFFER_FACTORY,"Transferring Host-Visible Buffer To Device-Local Heap\n");
+	if ((bufferMetadataMap[_buffer].usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) == 0)
+	{
+		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::BUFFER_FACTORY, "  Source buffer wasn't created with the TRANSFER_SRC_BIT usage flag\n");
+		throw std::runtime_error("");
+	}
+	if ((bufferMetadataMap[_buffer].flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == 0)
+	{
+		logger.Log(VK_LOGGER_CHANNEL::ERROR, VK_LOGGER_LAYER::BUFFER_FACTORY, "  Source buffer wasn't created with the HOST_VISIBLE memory property flag\n");
+		throw std::runtime_error("");
+	}
+
+	//For new buffer, remove TRANSFER_SRC_BIT usage flag and add TRANSFER_DST_BIT
+	VkBufferUsageFlags newUsageFlags{ (bufferMetadataMap[_buffer].usage & (~VK_BUFFER_USAGE_TRANSFER_SRC_BIT)) | VK_BUFFER_USAGE_TRANSFER_DST_BIT };
+	VkBuffer dstBuffer{ AllocateBufferImpl(bufferMetadataMap[_buffer].size, newUsageFlags, bufferMetadataMap[_buffer].sharingMode, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) };
+
+	//Record command buffer for copy command
+	VkCommandBuffer commandBuffer{ _commandBuffer == nullptr ? commandPool.AllocateCommandBuffer() : *_commandBuffer };
+	if (_commandBuffer == nullptr)
+	{
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.pNext = nullptr;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+	}
+
+	VkBufferCopy region{};
+	region.size = bufferMetadataMap[_buffer].size;
+	region.srcOffset = 0;
+	region.dstOffset = 0;
+	vkCmdCopyBuffer(commandBuffer, _buffer, dstBuffer, 1, &region);
+
+	if (_commandBuffer == nullptr)
+	{
+		vkEndCommandBuffer(commandBuffer);
+
+		//Execute the command buffer
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+		vkQueueSubmit(device.GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(device.GetGraphicsQueue());
+		commandPool.FreeCommandBuffer(commandBuffer);
+	}
+
+	if (_freeSourceBuffer)
+	{
+		FreeBuffer(_buffer);
+	}
+
+	return dstBuffer;
 }
 
 
@@ -180,6 +241,12 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 		throw std::runtime_error("");
 	}
 
+	//Populate buffer-metadata entry
+	bufferMetadataMap[buffer].size = _size;
+	bufferMetadataMap[buffer].usage = _usage;
+	bufferMetadataMap[buffer].sharingMode = _sharingMode;
+	bufferMetadataMap[buffer].flags = _requiredMemFlags;
+	
 	return buffer;
 }
 
@@ -187,15 +254,16 @@ VkBuffer BufferFactory::AllocateBufferImpl(const VkDeviceSize& _size, const VkBu
 
 void BufferFactory::FreeBufferImpl(VkBuffer& _buffer)
 {
+	bufferMetadataMap.erase(_buffer);
 	if (bufferMemoryMap[_buffer] != VK_NULL_HANDLE)
 	{
 		vkFreeMemory(device.GetDevice(), bufferMemoryMap[_buffer], static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 	}
+	bufferMemoryMap.erase(_buffer);
 	if (_buffer != VK_NULL_HANDLE)
 	{
 		vkDestroyBuffer(device.GetDevice(), _buffer, static_cast<const VkAllocationCallbacks*>(deviceDebugAllocator));
 	}
-	bufferMemoryMap.erase(_buffer);
 	_buffer = VK_NULL_HANDLE;
 }
 

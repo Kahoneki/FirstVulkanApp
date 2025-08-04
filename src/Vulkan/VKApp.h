@@ -31,6 +31,12 @@ struct UBOData
 	glm::mat4 proj;
 };
 
+struct Vertex
+{
+	glm::vec3 pos;
+	glm::vec2 texCoord;
+};
+
 class VKApp final
 {
 public:

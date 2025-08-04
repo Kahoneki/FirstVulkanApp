@@ -119,7 +119,6 @@ void ImageFactory::TransitionImage(VkImageLayout _srcLayout, VkImageLayout _dstL
 		vkBeginCommandBuffer(commandBuffer, &beginInfo);
 	}
 	
-	//Transition layout from UNDEFINED to TRANSFER_DST_OPTIMAL
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.pNext = nullptr;
@@ -133,8 +132,8 @@ void ImageFactory::TransitionImage(VkImageLayout _srcLayout, VkImageLayout _dstL
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = _srcAccessMask; //No previous operation to wait on
-	barrier.dstAccessMask = _dstAccessMask; //Wait on this barrier before allowing transfer write (copy) commands
+	barrier.srcAccessMask = _srcAccessMask;
+	barrier.dstAccessMask = _dstAccessMask;
 	vkCmdPipelineBarrier(commandBuffer, _srcStageMask, _dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 	if (_commandBuffer == nullptr)
@@ -149,6 +148,7 @@ void ImageFactory::TransitionImage(VkImageLayout _srcLayout, VkImageLayout _dstL
 		submitInfo.pCommandBuffers = &commandBuffer;
 		vkQueueSubmit(device.GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
 		vkQueueWaitIdle(device.GetGraphicsQueue());
+		commandPool.FreeCommandBuffer(commandBuffer);
 	}
 }
 

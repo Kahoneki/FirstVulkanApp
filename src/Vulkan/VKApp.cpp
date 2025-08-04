@@ -30,7 +30,7 @@ VKApp::VKApp(VkExtent2D _windowSize,
 	  vulkanDevice(std::make_unique<VulkanDevice>(logger, instDebugAllocator, deviceDebugAllocator, _apiVer, _appName, _desiredInstanceLayers, _desiredInstanceExtensions, _desiredDeviceLayers, _desiredDeviceExtensions)),
 	  vulkanCommandPool(std::make_unique<VulkanCommandPool>(logger, deviceDebugAllocator, *vulkanDevice, VK_COMMAND_POOL_TYPE::GRAPHICS)),
 	  vulkanDescriptorPool(std::make_unique<VulkanDescriptorPool>(logger, deviceDebugAllocator, *vulkanDevice, _descriptorPoolSizeCount, _descriptorPoolSizes)),
-	  bufferFactory(std::make_unique<BufferFactory>(logger, deviceDebugAllocator, *vulkanDevice)),
+	  bufferFactory(std::make_unique<BufferFactory>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool)),
 	  imageFactory(std::make_unique<ImageFactory>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *bufferFactory)),
 	  vulkanRenderManager(std::make_unique<VulkanRenderManager>(logger, deviceDebugAllocator, *vulkanDevice, *vulkanCommandPool, *imageFactory, _windowSize, 3, _renderPassDesc))
 {
@@ -62,8 +62,6 @@ VKApp::~VKApp()
 	//Unmap buffers
 	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(ubo));
 	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::APPLICATION, "  UBO memory unmapped\n");
-	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer));
-	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::APPLICATION, "  Vertex buffer memory unmapped\n");
 }
 
 
@@ -87,51 +85,49 @@ void VKApp::Run()
 void VKApp::InitialiseVertexBuffer()
 {
 	//Define quad vertex buffer data
-	const float vertices[] = {
-		//POSITION			  UV
+	const Vertex vertices[]{
 		//Back face (-Z)
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+		{{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f}},
+		{{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+		{{ 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f}},
+		{{-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f}},
 
 		//Front face (+Z)
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+		{{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
+		{{ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f}},
+		{{ 0.5f,  0.5f,  0.5f}, {1.0f, 1.0f}},
+		{{-0.5f,  0.5f,  0.5f}, {0.0f, 1.0f}},
 
 		//Left face (-X)
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		{{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+		{{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+		{{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+		{{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
 
 		//Right face (+X)
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		{{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+		{{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+		{{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+		{{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
 
 		//Bottom face (-Y)
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		{{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+		{{ 0.5f, -0.5f, -0.5f}, {1.0f, 1.0f}},
+		{{ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f}},
+		{{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
 
 		//Top face (+Y)
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f
+		{{-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f}},
+		{{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+		{{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+		{{-0.5f,  0.5f,  0.5f}, {0.0f, 0.0f}}
 	};
-	constexpr VkDeviceSize bufferSize{ std::size(vertices) * sizeof(vertices[0]) };
+	constexpr VkDeviceSize bufferSize{ std::size(vertices) * sizeof(Vertex) };
 	
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating Vertex Buffer\n");
-	vertexBuffer = bufferFactory->AllocateBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	vertexBuffer = bufferFactory->AllocateBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating Vertex Buffer\n");
 
 	//Map buffer memory
@@ -149,6 +145,11 @@ void VKApp::InitialiseVertexBuffer()
 	//Write to buffer
 	memcpy(vertexBufferMap, vertices, static_cast<std::size_t>(bufferSize));
 	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::APPLICATION, "  Vertex buffer memory filled with quad vertex data\n");
+	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(vertexBuffer));
+	logger.Log(VK_LOGGER_CHANNEL::SUCCESS, VK_LOGGER_LAYER::APPLICATION, "  Vertex buffer memory unmapped\n");
+	
+	//Transfer to device-local buffer
+	vertexBuffer = bufferFactory->TransferToDeviceLocalBuffer(vertexBuffer, true);
 }
 
 
@@ -174,9 +175,8 @@ void VKApp::InitialiseIndexBuffer()
 	
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Creating Index Buffer\n");
-	indexBuffer = bufferFactory->AllocateBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "\n\n\n", VK_LOGGER_WIDTH::DEFAULT, false);
+	indexBuffer = bufferFactory->AllocateBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	
 	logger.Log(VK_LOGGER_CHANNEL::HEADING, VK_LOGGER_LAYER::APPLICATION, "Populating Index Buffer\n");
 
 	//Map buffer memory
@@ -199,6 +199,9 @@ void VKApp::InitialiseIndexBuffer()
 	//Unmap memory
 	vkUnmapMemory(vulkanDevice->GetDevice(), bufferFactory->GetMemory(indexBuffer));
 	logger.Log(VK_LOGGER_CHANNEL::INFO, VK_LOGGER_LAYER::APPLICATION, "  Index buffer memory unmapped\n");
+
+	//Transfer to device-local buffer
+	indexBuffer = bufferFactory->TransferToDeviceLocalBuffer(indexBuffer, true);
 }
 
 
@@ -388,7 +391,7 @@ void VKApp::CreatePipeline()
 
 	VkVertexInputBindingDescription vertInputBindingDesc{};
 	vertInputBindingDesc.binding = 0;
-	vertInputBindingDesc.stride = 5 * sizeof(float);
+	vertInputBindingDesc.stride = sizeof(Vertex);
 	vertInputBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	piplDesc.vertexBindingDescriptionCount = 1;
 	piplDesc.pVertexBindingDescriptions = &vertInputBindingDesc;
@@ -397,13 +400,13 @@ void VKApp::CreatePipeline()
 	posAttribDesc.binding = 0;
 	posAttribDesc.location = 0;
 	posAttribDesc.format = VK_FORMAT_R32G32B32_SFLOAT;
-	posAttribDesc.offset = 0;
+	posAttribDesc.offset = offsetof(Vertex, pos);
 
 	VkVertexInputAttributeDescription uvAttribDesc{};
 	uvAttribDesc.binding = 0;
 	uvAttribDesc.location = 1;
 	uvAttribDesc.format = VK_FORMAT_R32G32_SFLOAT;
-	uvAttribDesc.offset = 3 * sizeof(float);
+	uvAttribDesc.offset = offsetof(Vertex, texCoord);
 
 	VkVertexInputAttributeDescription attribDescs[]{ posAttribDesc, uvAttribDesc };
 	
