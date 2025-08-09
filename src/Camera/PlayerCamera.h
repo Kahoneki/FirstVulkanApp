@@ -13,7 +13,7 @@ namespace Neki
 class PlayerCamera : public Camera
 {
 public:
-	PlayerCamera(float _movementSpeed, float _mouseSensitivity, VulkanRenderManager& _renderManager, glm::vec3 _pos, glm::vec3 _up, float _yaw, float _pitch, float _nearPlaneDist, float _farPlaneDist, float _fov);
+	PlayerCamera(float _movementSpeed, float _mouseSensitivity, VulkanSwapchain& _swapchain, glm::vec3 _pos, glm::vec3 _up, float _yaw, float _pitch, float _nearPlaneDist, float _farPlaneDist, float _fov);
 
 	void Update();
 	

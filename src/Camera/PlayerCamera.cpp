@@ -7,8 +7,8 @@ namespace Neki
 
 
 
-PlayerCamera::PlayerCamera(float _movementSpeed, float _mouseSensitivity, VulkanRenderManager& _renderManager, glm::vec3 _pos, glm::vec3 _up, float _yaw, float _pitch, float _nearPlaneDist, float _farPlaneDist, float _fov)
-						  : Camera(_renderManager, _pos, _up, _yaw, _pitch, _nearPlaneDist, _farPlaneDist, _fov)
+PlayerCamera::PlayerCamera(float _movementSpeed, float _mouseSensitivity, VulkanSwapchain& _swapchain, glm::vec3 _pos, glm::vec3 _up, float _yaw, float _pitch, float _nearPlaneDist, float _farPlaneDist, float _fov)
+						  : Camera(_swapchain, _pos, _up, _yaw, _pitch, _nearPlaneDist, _farPlaneDist, _fov)
 {
 	movementSpeed = _movementSpeed;
 	mouseSensitivity = _mouseSensitivity;

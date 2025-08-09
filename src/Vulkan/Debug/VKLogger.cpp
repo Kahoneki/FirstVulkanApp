@@ -95,6 +95,7 @@ namespace Neki
 		{
 			case VK_LOGGER_LAYER::DEVICE:			return "[DEVICE]";
 			case VK_LOGGER_LAYER::COMMAND_POOL:		return "[COMMAND POOL]";
+			case VK_LOGGER_LAYER::SWAPCHAIN:		return "[SWAPCHAIN]";
 			case VK_LOGGER_LAYER::RENDER_MANAGER:	return "[RENDER MANAGER]";
 			case VK_LOGGER_LAYER::DESCRIPTOR_POOL:	return "[DESCRIPTOR POOL]";
 			case VK_LOGGER_LAYER::PIPELINE:			return "[PIPELINE]";

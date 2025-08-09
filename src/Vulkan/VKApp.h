@@ -36,10 +36,24 @@ struct Vertex
 	glm::vec2 texCoord;
 };
 
+struct GraphicsPipelineShaderFilepaths
+{
+	GraphicsPipelineShaderFilepaths() = delete;
+	GraphicsPipelineShaderFilepaths(const char* _vert, const char* _frag, const char* _tessCtrl=nullptr, const char* _tessEval=nullptr)
+								   : vert(_vert), frag(_frag), tessCtrl(_tessCtrl), tessEval(_tessEval) {}
+	const char* vert;
+	const char* frag;
+	const char* tessCtrl;
+	const char* tessEval;
+};
+
 struct VKAppCreationDescription
 {
 	VkExtent2D windowSize;
 	VKRenderPassCleanDesc renderPassDesc;
+	GraphicsPipelineShaderFilepaths* subpassPipelines;
+	std::uint32_t clearValueCount;
+	VkClearValue* clearValues;
 	std::uint32_t descriptorPoolSizeCount;
 	VkDescriptorPoolSize* descriptorPoolSizes;
 	std::uint32_t apiVer;
@@ -78,35 +92,50 @@ private:
 	std::unique_ptr<VulkanDescriptorPool> vulkanDescriptorPool;
 	std::unique_ptr<BufferFactory> bufferFactory;
 	std::unique_ptr<ImageFactory> imageFactory;
+	std::unique_ptr<VulkanSwapchain> vulkanSwapchain;
 	std::unique_ptr<VulkanRenderManager> vulkanRenderManager;
 	std::unique_ptr<VulkanGraphicsPipeline> vulkanGraphicsPipeline;
+	std::unique_ptr<VulkanGraphicsPipeline> vulkanPostprocessPipeline;
 
 	//Init sub-functions
-	void InitialiseVertexBuffer();
-	void InitialiseIndexBuffer();
+	void InitialiseCubeVertexBuffer();
+	void InitialiseCubeIndexBuffer();
+	void InitialiseQuadVertexBuffer();
+	void InitialiseQuadIndexBuffer();
 	void InitialiseUBO();
 	void InitialiseSampler();
 	void InitialiseImage();
 	void CreateDescriptorSet();
 	void BindDescriptorSet();
+	void CreatePostprocessDescriptorSet();
+	void BindPostprocessDescriptorSet();
 	void CreatePipeline();
+	void CreatePostprocessPipeline();
 
 	//Per-frame functions
 	void UpdateUBO(PlayerCamera& _playerCamera);
 	void DrawFrame(PlayerCamera& _playerCamera);
+
+	std::uint32_t clearValueCount;
+	VkClearValue* clearValues;
 	
 	//Raw vulkan resources
 	VkBuffer vertexBuffer;
 	VkBuffer indexBuffer;
+	VkBuffer quadVertexBuffer;
+	VkBuffer quadIndexBuffer;
 	VkBuffer ubo;
 	VkSampler sampler;
 	VkImage image;
 	VkImageView imageView;
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet descriptorSet;
+	VkDescriptorSetLayout postprocessDescriptorSetLayout;
+	VkDescriptorSet postprocessDescriptorSet;
 
 	//Persistent buffer maps
 	void* vertexBufferMap;
+	void* quadVertexBufferMap;
 	void* uboMap;
 
 	glm::mat4 cubeModelMatrix;

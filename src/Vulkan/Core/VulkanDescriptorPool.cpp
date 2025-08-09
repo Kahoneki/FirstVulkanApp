@@ -20,7 +20,7 @@ VulkanDescriptorPool::VulkanDescriptorPool(const VKLogger& _logger, VKDebugAlloc
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.pNext = nullptr;
-	poolInfo.maxSets = 1;
+	poolInfo.maxSets = 2;
 	poolInfo.poolSizeCount = poolSizeCount;
 	poolInfo.pPoolSizes = _poolSizes;
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;

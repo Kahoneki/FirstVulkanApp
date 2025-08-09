@@ -3,7 +3,7 @@
 
 #include <glm/glm.hpp>
 
-#include "../Vulkan/Core/VulkanRenderManager.h"
+#include "../Vulkan/Core/VulkanSwapchain.h"
 
 namespace Neki
 {
@@ -19,7 +19,7 @@ enum class PROJECTION_METHOD
 class Camera
 {
 public:
-	Camera(VulkanRenderManager& _renderManager, glm::vec3 _pos, glm::vec3 _up, float _yaw, float _pitch, float _nearPlaneDist, float _farPlaneDist, float _fov);
+	Camera(VulkanSwapchain& _swapchain, glm::vec3 _pos, glm::vec3 _up, float _yaw, float _pitch, float _nearPlaneDist, float _farPlaneDist, float _fov);
 
 	[[nodiscard]] glm::mat4 GetViewMatrix() const;
 	[[nodiscard]] glm::mat4 GetProjectionMatrix(PROJECTION_METHOD _method = PROJECTION_METHOD::PERSPECTIVE) const;
@@ -29,7 +29,7 @@ protected:
 	void UpdateCameraVectors();
 
 	//Dependency injections
-	VulkanRenderManager& renderManager;
+	VulkanSwapchain& swapchain;
 	
 	//Camera data
 	glm::vec3 pos;

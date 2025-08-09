@@ -8,8 +8,8 @@ namespace Neki
 
 
 
-Camera::Camera(VulkanRenderManager& _renderManager, glm::vec3 _pos, glm::vec3 _up, float _yaw, float _pitch, float _nearPlaneDist, float _farPlaneDist, float _fov)
-			  : renderManager(_renderManager)
+Camera::Camera(VulkanSwapchain& _swapchain, glm::vec3 _pos, glm::vec3 _up, float _yaw, float _pitch, float _nearPlaneDist, float _farPlaneDist, float _fov)
+			  : swapchain(_swapchain)
 {
 	pos = _pos;
 	up = _up;
@@ -40,7 +40,7 @@ glm::mat4 Camera::GetProjectionMatrix(PROJECTION_METHOD _method) const
 	}
 	else
 	{
-		float aspectRatio{ static_cast<float>(renderManager.GetSwapchainExtent().width) / static_cast<float>(renderManager.GetSwapchainExtent().height) };
+		float aspectRatio{ static_cast<float>(swapchain.GetSwapchainExtent().width) / static_cast<float>(swapchain.GetSwapchainExtent().height) };
 		return glm::perspective(glm::radians(fov), aspectRatio, nearPlaneDist, farPlaneDist);
 	}
 }
